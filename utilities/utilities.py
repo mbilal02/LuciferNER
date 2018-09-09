@@ -11,9 +11,6 @@ from keras import backend as K
 import keras as keras
 from keras_preprocessing.sequence import pad_sequences
 
-
-
-
 ######################################################
 #   Word Matrix, word and character vocabulary build #
 ######################################################

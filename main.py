@@ -1,20 +1,17 @@
 import gc
 import os
-
 from keras.engine import Model, Input
 from keras.layers import Dense, LSTM, Bidirectional, Dropout, K
 from keras.layers import Embedding
 from keras.utils import to_categorical
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics import classification_report
-
 from processed.Preprocess import load_sentence
 from utilities.setting import TRAIN_, DEV_, TEST_
 from utilities.utilities import load_word_matrix, pad_sequence, vocab_bulid
 
 from numpy.random import seed
 seed(7)
-
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
