@@ -4,7 +4,7 @@ import sklearn_crfsuite as c
 from sklearn import metrics
 from sklearn.preprocessing import MultiLabelBinarizer
 
-from feature_extraction.Features import sent2features, train_sents, sent2labels, test_sents
+from processed.linguistic_features import sent2features, train_sents, sent2labels, test_sents
 
 X_train = [sent2features(s) for s in train_sents]
 y_train = [sent2labels(s) for s in train_sents]
