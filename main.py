@@ -12,8 +12,8 @@ from processed.Preprocess import load_sentence
 from utilities.setting import TRAIN_, DEV_, TEST_
 from utilities.utilities import load_word_matrix, pad_sequence, vocab_bulid
 
-# from numpy.random import seed
-# seed(7)
+from numpy.random import seed
+seed(7)
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -57,11 +57,10 @@ print(X_test.shape)
 print(y_test.shape)
 
 twitter_embeddings = load_word_matrix(vocb)
-# print(y_cat_train)
-# print(y_cat_test)
+
 input_shape = max_sent
 w_tweet = Input(shape=(input_shape,), dtype='int32')
-# w_emb = Embedding(input_dim=twitter_embeddings.shape, output_dim=EMBEDDING_DIM,weights=[twitter_embeddings], input_length=input_shape, mask_zero=False)(
+
 embed_layer = Embedding(
     input_dim=word_vocab_size,
     output_dim=EMBEDDING_DIM,
@@ -80,6 +79,7 @@ embed_layer = Bidirectional(LSTM(200, batch_size=150, activation='sigmoid', retu
 
 # embed_layer = Dense(100, activation='sigmoid', name='Dense_concat_layer')(embed_layer)
 # flat = Flatten()(embed_layer)
+
 # final Dense layer for classes
 cat_output = Dense(n_classes, activation='softmax', name='Final_Output_Layer')(embed_layer)
 

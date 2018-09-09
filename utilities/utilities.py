@@ -4,8 +4,11 @@ from collections import Counter
 import gensim
 import numpy as np
 import matplotlib.pyplot as plt
-
+import keras
+from keras_preprocessing import image
+from keras import preprocessing
 from keras import backend as K
+import keras as keras
 from keras_preprocessing.sequence import pad_sequences
 
 
@@ -16,9 +19,9 @@ from keras_preprocessing.sequence import pad_sequences
 ######################################################
 
 def load_word_matrix(vocabulary, size=200):
-    """
+    '''
         This function is used to convert words into word vectors
-    """
+    '''
 
     b = 0
     word_matrix = np.zeros((len(vocabulary) + 1, size))
@@ -53,14 +56,14 @@ index2category = [
 
 
 def vocab_bulid(sentences):
-    """
+    '''
     input:
         sentences list,
-        the element of the list is (word, label) pair.
-    output:
-        some dictionaries.
 
-    """
+    output:
+        VOcabulary
+
+    '''
     words = []
     chars = []
     labels = []
@@ -89,11 +92,10 @@ def vocab_bulid(sentences):
 
 
 def pad_sequence(sentences, vocabulary, labelVoc, sent_maxlen=35):
-    """
-        This function is used to pad the word into the same length, the word length is set to 30.
-        Moreover, it also pad each sentence into the same length, the length is set to 35.
+    '''
+        This function is used to pad the word into the same length.
 
-    """
+    '''
     x = []
     y = []
     for sentence in sentences:
@@ -146,10 +148,9 @@ def label_index(labels_counts):
 
 
 def label_index(labels_counts):
-    """
-       the input is the output of Counter. This function defines the (label, index) pair,
-       and it cast our datasets label to the definition (label, index) pair.
-    """
+    '''
+        defining (label, index) pair.
+    '''
 
     num_labels = len(labels_counts)
     labelVoc_inv = [x[0] for x in labels_counts.most_common()]
@@ -214,17 +215,13 @@ def fbeta_score(y_true, y_pred, beta=1):
     c2 = K.sum(K.round(K.clip(y_pred, 0, 1)))
     c3 = K.sum(K.round(K.clip(y_true, 0, 1)))
 
-    # If there are no true samples, fix the F score at 0.
     if c3 == 0:
         return 0
 
-    # How many selected items are relevant?
     precision = c1 / c2
 
-    # How many relevant items are selected?
     recall = c1 / c3
 
-    # Weight precision and recall together as a single scalar.
     beta2 = beta ** 2
     f_score = (1 + beta2) * (precision * recall) / (beta2 * precision + recall)
     return f_score
@@ -252,13 +249,11 @@ def f1(label, prediction):
             else:
                 false_negatives += 1
 
-    # a ratio of correctly predicted observation to the total observations
     accuracy = (true_positives + true_negatives) \
                / (true_positives + true_negatives + false_positives + false_negatives)
 
-    # precision is "how useful the search results are"
     precision = true_positives / (true_positives + false_positives)
-    # recall is "how complete the results are"
+
     recall = true_positives / (true_positives + false_negatives)
 
     f1_score = 2 / ((1 / precision) + (1 / recall))

@@ -1,7 +1,6 @@
 import csv
 import string
 from itertools import groupby
-
 from nltk.corpus.reader.conll import ConllCorpusReader
 
 import re
@@ -20,13 +19,11 @@ def conllReader(corpus):
     return ccorpus.tagged_sents(corpus)
 
 def load_sentence(train_name, dev_name, test_name):
-    """
+    '''
     reads in a way that every line contain a word and it's tag
     every sentence is split with a empty line.
 
-    """
-
-    img_id = []
+    '''
     sentences = []
     sentence = []
     sent_maxlen = 0
@@ -34,7 +31,6 @@ def load_sentence(train_name, dev_name, test_name):
     datasplit = []
 
     for fname in (train_name, dev_name, test_name):
-        datasplit.append(len(img_id))
         with open(fname, 'r', encoding='utf8') as file:
             for line in file:
                 line = line.rstrip()
@@ -52,7 +48,7 @@ def load_sentence(train_name, dev_name, test_name):
     return [datasplit, sentences, sent_maxlen, word_maxlen, num_sentence]
 
 def read_file_as_list_of_tuples(filename, delimiter='\t'):
-    """It returns a list of tweets, and each tweet is a tuple of the elements found in the line"""
+    #It returns a list of tweets, and each tweet is a tuple of the elements found in the line
     with open(filename, encoding='utf8') as stream:
         reader = csv.reader(stream, delimiter=delimiter, quoting=csv.QUOTE_NONE)
         return [list(tuple(e) for e in g) for k, g in groupby(reader, lambda x: not x) if not k]
