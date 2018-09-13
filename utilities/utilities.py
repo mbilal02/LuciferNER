@@ -2,18 +2,18 @@
 from collections import Counter
 
 import gensim
+import numpy
 import numpy as np
 import matplotlib.pyplot as plt
-import keras
-from keras_preprocessing import image
-from keras import preprocessing
 from keras import backend as K
-import keras as keras
-from keras_preprocessing.sequence import pad_sequences
+import tensorflow as tf
+
+
 
 ######################################################
 #   Word Matrix, word and character vocabulary build #
 ######################################################
+
 
 def load_word_matrix(vocabulary, size=200):
     '''
@@ -22,7 +22,7 @@ def load_word_matrix(vocabulary, size=200):
 
     b = 0
     word_matrix = np.zeros((len(vocabulary) + 1, size))
-    model = gensim.models.KeyedVectors.load_word2vec_format("../data/glove.txt", binary=False, encoding='utf8')
+    model = gensim.models.KeyedVectors.load_word2vec_format("data/glove.txt", binary=False, encoding='utf8')
     for word, i in vocabulary.items():
         try:
             word_matrix[i] = model[word.lower().encode('utf8')]
@@ -33,6 +33,34 @@ def load_word_matrix(vocabulary, size=200):
             b += 1
     print('there are %d words not in model' % b)
     return word_matrix
+
+
+def learn_embedding(vocab, word_vocab_size):
+    embeddings_index = dict()
+    b = 0
+    f = open('data/glove.twitter.27B.200d.txt', 'r', encoding='utf8')
+    for line in f:
+        values = line.split()
+        word = values[0]
+        coefs = np.asarray(values[1:], dtype='float32')
+        embeddings_index[word] = coefs
+    f.close()
+
+    embedding_matrix = np.zeros((word_vocab_size, 200))
+    for word, index in vocab.items():
+        if index > word_vocab_size - 1:
+            break
+        else:
+            embedding_vector = embeddings_index.get(word)
+            if embedding_vector is not None:
+                embedding_matrix[index] = embedding_vector
+            else:
+                # if a word is not include in the vocabulary, it's word embedding will be set by random.
+                embedding_matrix[index] = np.random.uniform(-0.25, 0.25, 200)
+                b += 1
+            print('there are %d words not in model' % b)
+
+            return embedding_matrix
 
 
 index2category = [
@@ -104,8 +132,8 @@ def pad_sequence(sentences, vocabulary, labelVoc, sent_maxlen=35):
         x.append(w_id)
         y.append(y_id)
 
-    y = pad_sequences(y, maxlen=sent_maxlen).astype(np.int32)
-    x = pad_sequences(x, maxlen=sent_maxlen).astype(np.int32)
+    y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen).astype(np.int32)
+    x = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=sent_maxlen).astype(np.int32)
 
     x = np.asarray(x)
     y = np.asarray(y)
@@ -113,7 +141,7 @@ def pad_sequence(sentences, vocabulary, labelVoc, sent_maxlen=35):
     return [x, y]
 
 
-'''
+
 def label_index(labels_counts):
 	"""
 	   the input is the output of Counter. This function defines the (label, index) pair,
@@ -141,13 +169,11 @@ def label_index(labels_counts):
 			if not key in labelVoc:
 				labelVoc.setdefault(key, len(labelVoc))
 	return labelVoc_inv, labelVoc
+
+
 '''
-
-
 def label_index(labels_counts):
-    '''
-        defining (label, index) pair.
-    '''
+    
 
     num_labels = len(labels_counts)
     labelVoc_inv = [x[0] for x in labels_counts.most_common()]
@@ -180,7 +206,7 @@ def label_index(labels_counts):
                 labelVoc.setdefault(key, len(labelVoc))
     return labelVoc_inv, labelVoc
 
-
+'''
 
 
 
@@ -203,25 +229,27 @@ def show_training_loss_plot(hist):
     plt.show()
 
 
-def fbeta_score(y_true, y_pred, beta=1):
-    if beta < 0:
-        raise ValueError('The lowest choosable beta is zero (only precision).')
+def classification_report(y_true, y_pred, labels):
+    y_true = numpy.asarray(y_true).ravel()
+    y_pred = numpy.asarray(y_pred).ravel()
+    corrects = Counter(yt for yt, yp in zip(y_true, y_pred) if yt == yp)
+    y_true_counts = Counter(y_true)
+    y_pred_counts = Counter(y_pred)
+    report = ((lab,  # label
+               corrects[i] / max(1, y_true_counts[i]),  # recall
+               corrects[i] / max(1, y_pred_counts[i]),  # precision
+               y_true_counts[i]  # support
+               ) for i, lab in enumerate(labels))
+    report = [(l, r, p, 2 * r * p / max(1e-9, r + p), s) for l, r, p, s in report]
 
-    # Count positive samples.
-    c1 = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    c2 = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    c3 = K.sum(K.round(K.clip(y_true, 0, 1)))
-
-    if c3 == 0:
-        return 0
-
-    precision = c1 / c2
-
-    recall = c1 / c3
-
-    beta2 = beta ** 2
-    f_score = (1 + beta2) * (precision * recall) / (beta2 * precision + recall)
-    return f_score
+    print('{:<15}{:>10}{:>10}{:>10}{:>10}\n'.format('', 'recall', 'precision', 'f1-score', 'support'))
+    formatter = '{:<15}{:>10.2f}{:>10.2f}{:>10.2f}{:>10d}'.format
+    for r in report:
+        print(formatter(*r))
+    print('')
+    report2 = zip(*[(r * s, p * s, f1 * s) for l, r, p, f1, s in report])
+    N = len(y_true)
+    print(formatter('avg / total', sum(report2[0]) / N, sum(report2[1]) / N, sum(report2[2]) / N, N) + '\n')
 
 
 def decode_predictions(predictions, idx2label):

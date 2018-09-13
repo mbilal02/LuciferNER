@@ -1,22 +1,32 @@
 import gc
 import os
+
+from keras import metrics
 from keras.engine import Model, Input
-from keras.layers import Dense, LSTM, Bidirectional, Dropout, K
+from keras.layers import Dense, LSTM, Bidirectional, Dropout, K, TimeDistributed
 from keras.layers import Embedding
 from keras.utils import to_categorical
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics import classification_report
+from tensorflow import confusion_matrix
+import tensorflow as tf
+from keras_contrib.layers import CRF
 from processed.Preprocess import load_sentence
-from utilities.setting import TRAIN_, DEV_, TEST_
-from utilities.utilities import load_word_matrix, pad_sequence, vocab_bulid
+from utilities.f_measure import evaluate, evaluate_each_class
+
+from utilities.setting import TRAIN_, DEV_, TEST_, TEST, DEV, TRAIN
+from utilities.utilities import load_word_matrix, pad_sequence, vocab_bulid, learn_embedding
+import keras as keras
+import numpy as np
 
 from numpy.random import seed
 seed(7)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+
 EMBEDDING_DIM = 200
-n_classes = 21
+n_classes = 13
 max_sent = 35
 '''
 trainData = conllReader('training.conll')
@@ -26,14 +36,15 @@ test = conllReader('test.conll')
 train = vocabulary_setup(trainData,valid)
 '''
 string = [['Shakira', 'B-person'], ['rocked', 'O'], ['Amsterdam', 'B-geo-loc'], ['today', 'O']]
-datasplit, sentences, sent_maxlen, word_maxlen, num_sentence = load_sentence(TRAIN_, DEV_, TEST_)
+datasplit, sentences, sent_maxlen, word_maxlen, num_sentence = load_sentence(TRAIN, DEV, TEST)
 id_to_vocb, vocb, vocb_inv, vocb_char, vocb_inv_char, labelVoc, labelVoc_inv = vocab_bulid(sentences)
-
+'''
 print(vocb['rainy'])
 print(vocb_inv[3651])
 print(id_to_vocb)
 print(labelVoc['B-company'])
 print(labelVoc_inv)
+'''
 word_vocab_size = len(vocb) + 1
 x, y = pad_sequence(sentences, vocb, labelVoc, sent_maxlen=35)
 
@@ -53,7 +64,7 @@ print(y_train.shape)
 print(X_test.shape)
 print(y_test.shape)
 
-twitter_embeddings = load_word_matrix(vocb)
+twitter_embeddings = learn_embedding(vocb, word_vocab_size)
 
 input_shape = max_sent
 w_tweet = Input(shape=(input_shape,), dtype='int32')
@@ -67,8 +78,8 @@ embed_layer = Embedding(
     name='{}_embed'.format('embedding'))(w_tweet)
 embed_layer = Dropout(0.5, name='{}_embed_dropout'.format('drop'))(embed_layer)
 
-embed_layer = Bidirectional(LSTM(200, batch_size=150, activation='sigmoid', return_sequences=True))(embed_layer)
-# embed_layer = Bidirectional(LSTM(200,  batch_size=150, return_sequences=False))(embed_layer)
+embed_layer = Bidirectional(LSTM(200, batch_size=40, activation='sigmoid', return_sequences=True))(embed_layer)
+#embed_layer = Bidirectional(LSTM(200,  batch_size=40, return_sequences=False))(embed_layer)
 
 # char_layer = get_char_cnn(char_max_len,char_vocab_size,char_dim=30,name='char_Layer')
 # Concatinating word from bidirectional LSTM and 1D CNN character output layer
@@ -77,26 +88,37 @@ embed_layer = Bidirectional(LSTM(200, batch_size=150, activation='sigmoid', retu
 # embed_layer = Dense(100, activation='sigmoid', name='Dense_concat_layer')(embed_layer)
 # flat = Flatten()(embed_layer)
 
-# final Dense layer for classes
-cat_output = Dense(n_classes, activation='softmax', name='Final_Output_Layer')(embed_layer)
+# Dense layer
 
-model = Model(inputs=w_tweet, outputs=cat_output, name='NER_Model')
-model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
+cat_output = TimeDistributed(Dense(n_classes, activation='softmax', name='Final_Output_Layer'))(embed_layer)
+
+#Crf layer
+crf = CRF(n_classes,sparse_target=True)
+
+#TODO: check if - log liklihood makes sense
+out = crf(cat_output)
+
+model = Model(inputs=w_tweet, outputs=out, name='NER_Model')
+model.compile(optimizer='rmsprop', loss=crf.loss_function, metrics=[crf.accuracy])
 model.summary()
 
 # early_stopping = EarlyStopping(patience=20, verbose=1)
-model.fit(X_train, y_train, epochs=10, batch_size=150,
-          verbose=True, validation_data=[X_test, y_test], shuffle=True)
+model.fit(X_train, y_train, epochs=150, batch_size=40,
+          verbose=True, validation_split=0.4, shuffle=True)
 
-accuracy, loss_and_metrics = model.evaluate(X_test, y_test, verbose=0)
+model.evaluate(X_test, y_test, verbose=0)
 gc.collect()
 
-predict = model.predict(X_test, verbose=True)
+predict = model.predict(X_test, verbose=True).argmax(-1)[X_test > 0]
+test_y_true = y_test[X_test > 0]
 
-print(predict[0])
 
-report = classification_report(K.argmax(y_test), predict)
-print(report)
+print(predict[1])
+
+classification_report(np.argmax(test_y_true, axis=1), predict)
+
+
+
 
 '''
 pre_test_label_index = get_tag_index(p, 35, 21)
