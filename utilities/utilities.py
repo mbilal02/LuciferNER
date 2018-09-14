@@ -15,30 +15,11 @@ import tensorflow as tf
 ######################################################
 
 
-def load_word_matrix(vocabulary, size=200):
-    '''
-        This function is used to convert words into word vectors
-    '''
-
-    b = 0
-    word_matrix = np.zeros((len(vocabulary) + 1, size))
-    model = gensim.models.KeyedVectors.load_word2vec_format("data/glove.txt", binary=False, encoding='utf8')
-    for word, i in vocabulary.items():
-        try:
-            word_matrix[i] = model[word.lower().encode('utf8')]
-            # index2word, embeddings = pick_embeddings_by_indexes(get_uniq_elems(corpus), model.vocab.item)
-        except KeyError:
-            # if a word is not include in the vocabulary, it's word embedding will be set by random.
-            word_matrix[i] = np.random.uniform(-0.25, 0.25, size)
-            b += 1
-    print('there are %d words not in model' % b)
-    return word_matrix
-
 
 def learn_embedding(vocab, word_vocab_size):
     embeddings_index = dict()
     b = 0
-    f = open('data/glove.twitter.27B.200d.txt', 'r', encoding='utf8')
+    f = open('data/glove.twitter.27B.100d.txt', 'r', encoding='utf8')
     for line in f:
         values = line.split()
         word = values[0]
@@ -46,7 +27,7 @@ def learn_embedding(vocab, word_vocab_size):
         embeddings_index[word] = coefs
     f.close()
 
-    embedding_matrix = np.zeros((word_vocab_size, 200))
+    embedding_matrix = np.zeros((word_vocab_size, 100))
     for word, index in vocab.items():
         if index > word_vocab_size - 1:
             break
@@ -56,7 +37,7 @@ def learn_embedding(vocab, word_vocab_size):
                 embedding_matrix[index] = embedding_vector
             else:
                 # if a word is not include in the vocabulary, it's word embedding will be set by random.
-                embedding_matrix[index] = np.random.uniform(-0.25, 0.25, 200)
+                embedding_matrix[index] = np.random.uniform(-0.25, 0.25, 100)
                 b += 1
             print('there are %d words not in model' % b)
 
@@ -116,7 +97,7 @@ def vocab_bulid(sentences):
     return [id_to_vocb, vocb, vocb_inv, vocb_char, vocb_inv_char, labelVoc, labelVoc_inv]
 
 
-def pad_sequence(sentences, vocabulary, labelVoc, sent_maxlen=35):
+def pad_sequence(sentences, vocabulary, vocab_char, labelVoc, word_maxlen=30, sent_maxlen=35):
     '''
         This function is used to pad the word into the same length.
 
@@ -132,16 +113,36 @@ def pad_sequence(sentences, vocabulary, labelVoc, sent_maxlen=35):
         x.append(w_id)
         y.append(y_id)
 
-    y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen).astype(np.int32)
-    x = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=sent_maxlen).astype(np.int32)
+    y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen, padding="post", value=labelVoc["O"])
+    x = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=sent_maxlen, padding="post")
+    x_c = []
+    for sentence in sentences:
+        s_pad = np.zeros([sent_maxlen, word_maxlen], dtype=np.int32)
+        s_c_pad = []
+        for word_label in sentence:
+            w_c = []
+            char_pad = np.zeros([word_maxlen], dtype=np.int32)
+            for char in word_label[0]:
+                w_c.append(vocab_char[char])
+            if len(w_c) <= word_maxlen:
+                char_pad[:len(w_c)] = w_c
+            else:
+                char_pad = w_c[:word_maxlen]
 
+            s_c_pad.append(char_pad)
+
+        for i in range(len(s_c_pad)):
+            s_pad[sent_maxlen - len(s_c_pad) + i, :len(s_c_pad[i])] = s_c_pad[i]
+        x_c.append(s_pad)
+
+    x_c = np.asarray(x_c)
     x = np.asarray(x)
     y = np.asarray(y)
 
-    return [x, y]
+    return [x, y, x_c]
 
 
-
+'''
 def label_index(labels_counts):
 	"""
 	   the input is the output of Counter. This function defines the (label, index) pair,
@@ -206,9 +207,19 @@ def label_index(labels_counts):
                 labelVoc.setdefault(key, len(labelVoc))
     return labelVoc_inv, labelVoc
 
-'''
 
+# Decoding labels
 
+def pred2label(pred,labelVoc):
+    idx2tag = {i: w for w, i in labelVoc.items()}
+    out = []
+    for pred_i in pred:
+        out_i = []
+        for p in pred_i:
+            p_i = np.argmax(p)
+            out_i.append(idx2tag[p_i])
+        out.append(out_i)
+    return out
 
 
 ######################################################

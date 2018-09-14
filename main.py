@@ -1,23 +1,17 @@
 import gc
 import os
-
 from keras import metrics
 from keras.engine import Model, Input
-from keras.layers import Dense, LSTM, Bidirectional, Dropout, K, TimeDistributed
+from keras.initializers import Constant
+from keras.layers import Dense, LSTM, Bidirectional, Dropout, K, TimeDistributed, concatenate, SpatialDropout1D, Reshape
 from keras.layers import Embedding
+from keras.optimizers import RMSprop
 from keras.utils import to_categorical
 from sklearn.cross_validation import train_test_split
-from sklearn.metrics import classification_report
-from tensorflow import confusion_matrix
-import tensorflow as tf
-from keras_contrib.layers import CRF
 from processed.Preprocess import load_sentence
-from utilities.f_measure import evaluate, evaluate_each_class
-
 from utilities.setting import TRAIN_, DEV_, TEST_, TEST, DEV, TRAIN
-from utilities.utilities import load_word_matrix, pad_sequence, vocab_bulid, learn_embedding
-import keras as keras
-import numpy as np
+from utilities.utilities import pad_sequence, vocab_bulid, learn_embedding, pred2label
+
 
 from numpy.random import seed
 seed(7)
@@ -25,8 +19,8 @@ seed(7)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-EMBEDDING_DIM = 200
-n_classes = 13
+EMBEDDING_DIM = 100
+n_classes = 21
 max_sent = 35
 '''
 trainData = conllReader('training.conll')
@@ -36,93 +30,95 @@ test = conllReader('test.conll')
 train = vocabulary_setup(trainData,valid)
 '''
 string = [['Shakira', 'B-person'], ['rocked', 'O'], ['Amsterdam', 'B-geo-loc'], ['today', 'O']]
-datasplit, sentences, sent_maxlen, word_maxlen, num_sentence = load_sentence(TRAIN, DEV, TEST)
+datasplit, sentences, sent_maxlen, word_maxlen, num_sentence = load_sentence(TRAIN_, DEV_, TEST_)
 id_to_vocb, vocb, vocb_inv, vocb_char, vocb_inv_char, labelVoc, labelVoc_inv = vocab_bulid(sentences)
-'''
-print(vocb['rainy'])
-print(vocb_inv[3651])
-print(id_to_vocb)
-print(labelVoc['B-company'])
-print(labelVoc_inv)
-'''
+
 word_vocab_size = len(vocb) + 1
-x, y = pad_sequence(sentences, vocb, labelVoc, sent_maxlen=35)
+char_vocab_size = len(vocb_char) +1
+
+x, y, x_c = pad_sequence(sentences, vocb, vocb_char, labelVoc, word_maxlen =30, sent_maxlen=35)
+x_c = x_c.reshape(len(x_c), max_sent * 30)
+print(len(x_c))
 
 num_sent = len(sentences)
-# Reshaping y in sentence length in to max sentence length
-y = y.reshape((num_sent * max_sent))
 
 y = to_categorical(y, num_classes=None)
 
-y = y.reshape((num_sent, max_sent, len(labelVoc)))
-print(y.shape)
-print(x.shape)
-X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.1, random_state= 2018)
+X_char_tr, X_char_te, _, _ = train_test_split(x_c, y, test_size=0.1, random_state= 2018)
 
-print(X_train.shape)
-print(y_train.shape)
-print(X_test.shape)
-print(y_test.shape)
 
+# Load word Matrix
 twitter_embeddings = learn_embedding(vocb, word_vocab_size)
 
+
+## Word Level Representation
+
 input_shape = max_sent
-w_tweet = Input(shape=(input_shape,), dtype='int32')
+w_tweet = Input(shape=(input_shape,),)
 
 embed_layer = Embedding(
     input_dim=word_vocab_size,
     output_dim=EMBEDDING_DIM,
     input_length=input_shape,
-    weights=[twitter_embeddings],
-    trainable=False,
+    embeddings_initializer=Constant(twitter_embeddings),
+    trainable=True,
+    mask_zero=True,
     name='{}_embed'.format('embedding'))(w_tweet)
-embed_layer = Dropout(0.5, name='{}_embed_dropout'.format('drop'))(embed_layer)
+#Bug-fixed for Keras embedding layer actually gets frozen to no use :D :D
+embed_layer.trainable = False
+embed_layer = Dropout(0.5, name='word_dropout')(embed_layer)
+embed_layer = Reshape((sent_maxlen, word_maxlen))(embed_layer)
+embed_layer = Bidirectional(LSTM(100, return_sequences=True, recurrent_dropout=0.1))(embed_layer)
 
-embed_layer = Bidirectional(LSTM(200, batch_size=40, activation='sigmoid', return_sequences=True))(embed_layer)
-#embed_layer = Bidirectional(LSTM(200,  batch_size=40, return_sequences=False))(embed_layer)
+# Character Level Word Representation#
 
-# char_layer = get_char_cnn(char_max_len,char_vocab_size,char_dim=30,name='char_Layer')
-# Concatinating word from bidirectional LSTM and 1D CNN character output layer
-# embed_layer = concatenate([embed_layer, char_layer], name='concat_layer')
+input_shape_char = max_sent
+char_in = Input(shape=(input_shape_char,),)
+emb_char = Embedding(input_dim=char_vocab_size, output_dim=30, input_length=(input_shape_char,))(char_in)
+emb_char = Dropout(0.3, name='Char_dropout')(emb_char)
 
-# embed_layer = Dense(100, activation='sigmoid', name='Dense_concat_layer')(embed_layer)
-# flat = Flatten()(embed_layer)
+# character LSTM to get word encodings by characters (Lample et al 2016)#
 
-# Dense layer
+char_layer = Bidirectional(LSTM(units=30, return_sequences=True,
+                                recurrent_dropout=0.5))(emb_char)
 
-cat_output = TimeDistributed(Dense(n_classes, activation='softmax', name='Final_Output_Layer'))(embed_layer)
+# Concatinating word from bidirectional LSTM and Char LSTM character output layer
+
+concat_layer = concatenate([embed_layer, char_layer], name='concat_layer', axis=2)
+concat_layer = SpatialDropout1D(0.3)(concat_layer)
+common_dense_layer = Dense(100, name='Dense_concat_layer')(concat_layer)
+
+out = Dense(21, name='final_layer', activation='softmax')(common_dense_layer)
 
 #Crf layer
-crf = CRF(n_classes,sparse_target=True)
+#crf = CRF(21,sparse_target=True)
 
-#TODO: check if - log liklihood makes sense
-out = crf(cat_output)
+#TODO: check if (CRF) -log liklihood makes sense with CRF
+#out = crf(cat_output)
 
-model = Model(inputs=w_tweet, outputs=out, name='NER_Model')
-model.compile(optimizer='rmsprop', loss=crf.loss_function, metrics=[crf.accuracy])
+model = Model(inputs=[w_tweet,char_in], outputs=out, name='NER_Model')
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['accuracy'])
 model.summary()
 
-# early_stopping = EarlyStopping(patience=20, verbose=1)
-model.fit(X_train, y_train, epochs=150, batch_size=40,
-          verbose=True, validation_split=0.4, shuffle=True)
 
-model.evaluate(X_test, y_test, verbose=0)
+# early_stopping = EarlyStopping(patience=20, verbose=1)
+model.fit([X_train,X_char_tr],y_train, epochs=30, validation_data=[[X_test, X_char_te], y_test], shuffle=True, verbose=1)
+
+model.evaluate([X_test,X_char_te], y_test, verbose=1)
 gc.collect()
 
-predict = model.predict(X_test, verbose=True).argmax(-1)[X_test > 0]
+predict = model.predict([X_test,X_char_te], verbose=1)
 test_y_true = y_test[X_test > 0]
 
+print('predicted')
+pred_labels = pred2label(predict)
+print(pred_labels)
+test_labels = pred2label(y_test)
+print('true')
+print(test_labels)
+#print("F1-score: {:.1%}".format(f1_score(test_labels, pred_labels)))
+#print(classification_report(test_labels, pred_labels))
 
-print(predict[1])
-
-classification_report(np.argmax(test_y_true, axis=1), predict)
 
 
-
-
-'''
-pre_test_label_index = get_tag_index(p, 35, 21)
-acc_test, f1_test,p_test,r_test=evaluate(pre_test_label_index, y_test,X_test,labelVoc,35,id_to_vocb)
-pre_test_label_index_2 = pre_test_label_index.reshape(len(y_test)*35)
-print('##test##, evaluate:''F1:',f1_test,'precision:',p_test,'recall:',r_test)
-'''
