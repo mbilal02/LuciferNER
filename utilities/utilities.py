@@ -15,11 +15,10 @@ import tensorflow as tf
 ######################################################
 
 
-
-def learn_embedding(vocab, word_vocab_size):
+def learn_embedding(vocab):
     embeddings_index = dict()
     b = 0
-    f = open('data/glove.twitter.27B.100d.txt', 'r', encoding='utf8')
+    f = open('data/glove.twitter.27B.200d.txt', 'r', encoding='utf8')
     for line in f:
         values = line.split()
         word = values[0]
@@ -27,39 +26,13 @@ def learn_embedding(vocab, word_vocab_size):
         embeddings_index[word] = coefs
     f.close()
 
-    embedding_matrix = np.zeros((word_vocab_size, 100))
-    for word, index in vocab.items():
-        if index > word_vocab_size - 1:
-            break
-        else:
-            embedding_vector = embeddings_index.get(word)
-            if embedding_vector is not None:
-                embedding_matrix[index] = embedding_vector
-            else:
-                # if a word is not include in the vocabulary, it's word embedding will be set by random.
-                embedding_matrix[index] = np.random.uniform(-0.25, 0.25, 100)
-                b += 1
-            print('there are %d words not in model' % b)
+    embedding_matrix = numpy.zeros((len(vocab) + 1, 200))
+    for word, i in vocab.items():
+        embedding_vector = embeddings_index.get(word)
+        if embedding_vector is not None:
+            embedding_matrix[i] = embedding_vector
 
             return embedding_matrix
-
-
-index2category = [
-    'B-corporation',
-    'B-creative-work',
-    'B-group',
-    'B-location',
-    'B-person',
-    'B-product',
-    'I-corporation',
-    'I-creative-work',
-    'I-group',
-    'I-location',
-    'I-person',
-    'I-product',
-    'O'
-]
-
 
 def vocab_bulid(sentences):
     '''
@@ -97,7 +70,7 @@ def vocab_bulid(sentences):
     return [id_to_vocb, vocb, vocb_inv, vocb_char, vocb_inv_char, labelVoc, labelVoc_inv]
 
 
-def pad_sequence(sentences, vocabulary, vocab_char, labelVoc, word_maxlen=30, sent_maxlen=35):
+def build_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
     '''
         This function is used to pad the word into the same length.
 
@@ -108,13 +81,15 @@ def pad_sequence(sentences, vocabulary, vocab_char, labelVoc, word_maxlen=30, se
         w_id = []
         y_id = []
         for word_label in sentence:
-            w_id.append(vocabulary[word_label[0]])
+            w_id.append(word_label[0])
+
             y_id.append(labelVoc[word_label[1]])
         x.append(w_id)
         y.append(y_id)
 
-    y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen, padding="post", value=labelVoc["O"])
-    x = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=sent_maxlen, padding="post")
+    y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen, padding="post")
+    #x = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=sent_maxlen, padding="post")
+
     x_c = []
     for sentence in sentences:
         s_pad = np.zeros([sent_maxlen, word_maxlen], dtype=np.int32)
@@ -133,16 +108,11 @@ def pad_sequence(sentences, vocabulary, vocab_char, labelVoc, word_maxlen=30, se
 
         for i in range(len(s_c_pad)):
             s_pad[sent_maxlen - len(s_c_pad) + i, :len(s_c_pad[i])] = s_c_pad[i]
-        x_c.append(s_pad)
 
-    x_c = np.asarray(x_c)
-    x = np.asarray(x)
-    y = np.asarray(y)
+        x_c.append(s_pad)
 
     return [x, y, x_c]
 
-
-'''
 def label_index(labels_counts):
 	"""
 	   the input is the output of Counter. This function defines the (label, index) pair,
@@ -207,7 +177,7 @@ def label_index(labels_counts):
                 labelVoc.setdefault(key, len(labelVoc))
     return labelVoc_inv, labelVoc
 
-
+'''
 # Decoding labels
 
 def pred2label(pred,labelVoc):
@@ -216,7 +186,18 @@ def pred2label(pred,labelVoc):
     for pred_i in pred:
         out_i = []
         for p in pred_i:
-            p_i = np.argmax(p)
+            p_i = np.argmax(p, axis=-1)
+            out_i.append(idx2tag[p_i])
+        out.append(out_i)
+    return out
+
+def true2label(pred,labelVoc):
+    idx2tag = {i: w for w, i in labelVoc.items()}
+    out = []
+    for pred_i in pred:
+        out_i = []
+        for p in pred_i:
+            p_i= np.argmax(p)
             out_i.append(idx2tag[p_i])
         out.append(out_i)
     return out
@@ -240,59 +221,66 @@ def show_training_loss_plot(hist):
     plt.show()
 
 
-def classification_report(y_true, y_pred, labels):
-    y_true = numpy.asarray(y_true).ravel()
-    y_pred = numpy.asarray(y_pred).ravel()
-    corrects = Counter(yt for yt, yp in zip(y_true, y_pred) if yt == yp)
-    y_true_counts = Counter(y_true)
-    y_pred_counts = Counter(y_pred)
-    report = ((lab,  # label
-               corrects[i] / max(1, y_true_counts[i]),  # recall
-               corrects[i] / max(1, y_pred_counts[i]),  # precision
-               y_true_counts[i]  # support
-               ) for i, lab in enumerate(labels))
-    report = [(l, r, p, 2 * r * p / max(1e-9, r + p), s) for l, r, p, s in report]
+# Method to compute the accruarcy. Call predict_labels to get the labels for the dataset
+def compute_f1(predictions, correct, idx2Label):
+    label_pred = []
+    for sentence in predictions:
+        label_pred.append([idx2Label[element] for element in sentence])
 
-    print('{:<15}{:>10}{:>10}{:>10}{:>10}\n'.format('', 'recall', 'precision', 'f1-score', 'support'))
-    formatter = '{:<15}{:>10.2f}{:>10.2f}{:>10.2f}{:>10d}'.format
-    for r in report:
-        print(formatter(*r))
-    print('')
-    report2 = zip(*[(r * s, p * s, f1 * s) for l, r, p, f1, s in report])
-    N = len(y_true)
-    print(formatter('avg / total', sum(report2[0]) / N, sum(report2[1]) / N, sum(report2[2]) / N, N) + '\n')
+    label_correct = []
+    for sentence in correct:
+        label_correct.append([idx2Label[element] for element in sentence])
 
+    # print label_pred
+    # print label_correct
 
-def decode_predictions(predictions, idx2label):
-    return [idx2label[pred] for pred in predictions]
+    prec = compute_precision(label_pred, label_correct)
+    rec = compute_precision(label_correct, label_pred)
+
+    f1 = 0
+    if (rec + prec) > 0:
+        f1 = 2.0 * prec * rec / (prec + rec);
+
+    return prec, rec, f1
 
 
-def f1(label, prediction):
-    true_positives = 0
-    false_positives = 0
-    true_negatives = 0
-    false_negatives = 0
+def compute_precision(guessed_sentences, correct_sentences):
+    assert (len(guessed_sentences) == len(correct_sentences))
+    correctCount = 0
+    count = 0
 
-    for i in range(0, label.shape[0]):
-        if prediction[i] == 1:
-            if prediction[i] == label[i]:
-                true_positives += 1
+    for sentenceIdx in range(len(guessed_sentences)):
+        guessed = guessed_sentences[sentenceIdx]
+        correct = correct_sentences[sentenceIdx]
+        assert (len(guessed) == len(correct))
+        idx = 0
+        while idx < len(guessed):
+            if guessed[idx][0] == 'B':  # A new chunk starts
+                count += 1
+
+                if guessed[idx] == correct[idx]:
+                    idx += 1
+                    correctlyFound = True
+
+                    while idx < len(guessed) and guessed[idx][0] == 'I':  # Scan until it no longer starts with I
+                        if guessed[idx] != correct[idx]:
+                            correctlyFound = False
+
+                        idx += 1
+
+                    if idx < len(guessed):
+                        if correct[idx][0] == 'I':  # The chunk in correct was longer
+                            correctlyFound = False
+
+                    if correctlyFound:
+                        correctCount += 1
+                else:
+                    idx += 1
             else:
-                false_positives += 1
-        else:
-            if prediction[i] == label[i]:
-                true_negatives += 1
-            else:
-                false_negatives += 1
+                idx += 1
 
-    accuracy = (true_positives + true_negatives) \
-               / (true_positives + true_negatives + false_positives + false_negatives)
+    precision = 0
+    if count > 0:
+        precision = float(correctCount) / count
 
-    precision = true_positives / (true_positives + false_positives)
-
-    recall = true_positives / (true_positives + false_negatives)
-
-    f1_score = 2 / ((1 / precision) + (1 / recall))
-
-    return accuracy, precision, recall, f1_score
-
+    return precision

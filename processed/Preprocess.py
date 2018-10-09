@@ -2,7 +2,6 @@ import csv
 import string
 from itertools import groupby
 from nltk.corpus.reader.conll import ConllCorpusReader
-
 import re
 
 
@@ -65,18 +64,9 @@ def unzip(list_of_tuples):
     return [list(elem) for elem in zip(*list_of_tuples)]
 
 
-def flatten_rec(l):
-    # TODO: fix problem
-    if not l:
-        return []
-    if isinstance(l[0], list):
-        return flatten(l[0]) + flatten(l[1:])
-    return l[:1] + flatten(l[1:])
-
-
-def flatten(l):
+def flatten(list):
     """Flatten 2D lists"""
-    return [i for sublist in l for i in sublist]
+    return [i for sublist in list for i in sublist]
 
 
 
@@ -84,7 +74,7 @@ def flatten(l):
 #   Character Encoding                               #
 ######################################################
 
-def orthigraphic_char(ch):
+def orthographic_char(ch):
     try:
         if re.match('[a-z]', ch):
             return 'c'
@@ -100,18 +90,16 @@ def orthigraphic_char(ch):
 
 
 def orthographic_tweet(tweet):
-    return [''.join([orthigraphic_char(ch) for ch in token]) for token in tweet]
+    return [''.join([orthographic_char(ch) for ch in token]) for token in tweet]
 
 
 def orthographic_mapping(tweets):
     return [orthographic_tweet(tweet) for tweet in tweets]
 
 
+def labela(label, labelVoc):
+    for i in label:
+        for j in i:
+            predId = labelVoc[j]
 
-
-
-
-
-
-
-
+            return predId
