@@ -148,5 +148,4 @@ true = flatten(y_test)
 prediction = np.argmax(predict, axis=-1)
 
 logger.info('Building evaluation results')
-print(classification_report(np.argmax(np.array(true), axis=-1),
-                            np.array(np.argmax(flatten(prediction), axis=-1))))
+print(classification_report(np.array(true), np.array(flatten(prediction))))
