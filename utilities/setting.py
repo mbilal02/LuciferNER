@@ -28,18 +28,21 @@ first_set_categories = [
 ######################################################
 # WNUT 2017
 
-TRAIN = "data/training.conll"
+TRAIN = "training.conll"
 
-DEV = "data/dev.conll"
+DEV = "dev.conll"
 
-TEST = "data/test.conll"
+TEST = "test.conll"
 
 
 #WNUT 2016
 
-TRAIN_ = "data/train_2016"
-DEV_ = "data/dev_2016"
-TEST_ = "data/test_2016"
+TRAIN_ = "train_2016"
+DEV_ = "dev_2016"
+TEST_ = "test_2016"
+
+#WNUT 2015
+TEST_15 = "wnut_2015.freebase"
 
 
 

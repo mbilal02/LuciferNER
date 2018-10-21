@@ -1,0 +1,8 @@
+tensorflow_hub
+gensim
+nltk
+matplotlib
+sklearn
+numpy==1.14.5
+keras==2.1.6
+tensorflow==1.9.0

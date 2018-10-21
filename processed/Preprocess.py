@@ -11,7 +11,7 @@ import re
 ######################################################
 
 def conllReader(corpus):
-    root = "../data/"
+    root = "data/"
 
     ccorpus = ConllCorpusReader(root, ".conll", ('words', 'pos', 'tree'))
 
@@ -28,9 +28,10 @@ def load_sentence(train_name, dev_name, test_name):
     sent_maxlen = 0
     word_maxlen = 0
     datasplit = []
+    root = "data/"
 
     for fname in (train_name, dev_name, test_name):
-        with open(fname, 'r', encoding='utf8') as file:
+        with open((root+fname), 'r', encoding='utf8') as file:
             for line in file:
                 line = line.rstrip()
                 if line == '':

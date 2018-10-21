@@ -76,19 +76,23 @@ def build_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
 
     '''
     x = []
+    x_w = []
     y = []
     for sentence in sentences:
         w_id = []
+        w = []
         y_id = []
         for word_label in sentence:
             w_id.append(word_label[0])
+            #w.append(vocabulary[word_label[0]])
 
             y_id.append(labelVoc[word_label[1]])
         x.append(w_id)
+        #x_w.append(w)
         y.append(y_id)
 
     y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen, padding="post")
-    #x = tf.keras.preprocessing.sequence.pad_sequences(x, maxlen=sent_maxlen, padding="post")
+    #x_word = tf.keras.preprocessing.sequence.pad_sequences(x_w, maxlen=sent_maxlen, padding="post")
 
     x_c = []
     for sentence in sentences:
@@ -112,7 +116,7 @@ def build_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
         x_c.append(s_pad)
 
     return [x, y, x_c]
-
+'''
 def label_index(labels_counts):
 	"""
 	   the input is the output of Counter. This function defines the (label, index) pair,
@@ -177,7 +181,7 @@ def label_index(labels_counts):
                 labelVoc.setdefault(key, len(labelVoc))
     return labelVoc_inv, labelVoc
 
-'''
+
 # Decoding labels
 
 def pred2label(pred,labelVoc):
