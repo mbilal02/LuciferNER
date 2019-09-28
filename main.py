@@ -23,8 +23,13 @@ def start_NER_Model():
     F1-scores from eval script (WNUT 2017 evaluation script cited in the paper)
     '''
     logger.info('Preparing data initiated')
-    X_train, X_dev, X_test, x_c, xc_d, xc_t, y, y_d, y_t, char_lookup, sent_maxlen, word_maxlen = start_build_sequences(
+    X_train, X_dev, X_test, x_c, xc_d, xc_t, y, y_d, y_t, addCharTrain, addCharDev,\
+    addCharTest, char_lookup, sent_maxlen, word_maxlen = start_build_sequences(
         vocabulary=wnut_b)
+    print(len(X_train))
+    print(len(X_test))
+    print(len(X_dev))
+    print(X_train)
 
     model = build_bilstm_cnn_model(sent_maxlen, word_maxlen, char_lookup, dataset_type=B)
 
@@ -36,37 +41,42 @@ def start_NER_Model():
     y = y.reshape(y.shape[0], y.shape[1], 1)
     y_t = y_t.reshape(y_t.shape[0], y_t.shape[1], 1)
     y_d = y_d.reshape(y_d.shape[0], y_d.shape[1], 1)
-    checkpointer = ModelCheckpoint(filepath='models/w_c_best_model2017.hdf5', verbose=1, save_best_only=True)
+    checkpointer = ModelCheckpoint(filepath='models/w_c_best_model2019.hdf5', verbose=1, save_best_only=True)
     earlystopper = EarlyStopping(monitor='val_loss', patience=3, verbose=1)
 
     logger.info('Training initiated. This may take long time to conclude..')
-    model.fit([np.array(X_train), np.array(x_c)], y,
-              epochs=18, batch_size=50, verbose=1, callbacks=[checkpointer, earlystopper],
-              validation_data=([np.array(X_dev), np.array(xc_d)], y_d), shuffle=True)
+    model.fit([np.array(X_train), np.array(x_c), np.array(addCharTrain)], y,
+              epochs=12, batch_size=50, verbose=1, callbacks=[checkpointer, earlystopper],
+              validation_data=([np.array(X_dev), np.array(xc_d), np.array(addCharDev)], y_d), shuffle=True)
     gc.collect()
 
     # model.save('Ner_word_character.h5')
     logger.info('Model testing step initiated...')
-    predict = model.predict([np.array(X_test), np.array(xc_t)], verbose=1, batch_size=50)
+    predict = model.predict([np.array(X_test), np.array(xc_t), np.array(addCharTest)], verbose=1, batch_size=50)
     prediction = np.argmax(predict, axis=-1)
+    #print(prediction[4])
 
-    truth = flatten(y_t)
+    truth = y_t
     logger.info('Building evaluation results')
-    print(classification_report(np.array(truth), np.array(flatten(prediction))))
+    #print(classification_report(np.array(truth), np.array(flatten(prediction))))
     prediction_final = np.array(prediction).tolist()
+
     predictionss = getLabels(prediction_final, vocabulary=wnut_b)
+    print(predictionss[4])
 
-    truth = getLabels(np.array(y_t).tolist(), vocabulary=wnut_b)
+    #truth = getLabels(np.array(y_t).tolist(), vocabulary=wnut_b)
 
-    save_predictions('evaluation/submissionb.tsv', X_test, truth, predictionss)
-    get_wnut_evaluation('evaluation/submissionb.tsv')
+    #save_predictions('exp1a.tsv', flatten(X_test), truth, predictionss)
+    true = getLabels(truth, vocabulary=wnut_b)
+    save_predictions('exp1b.tsv', flatten(X_test), true, predictionss)
+    #get_wnut_evaluation()
 
 
 def start_multimodal_ner_model():
-    '''
+    """
     Builds a multi-modal NER model, predicts, saves prediction files, loads evaulation
     F1-scores from eval script (WNUT 2017 evaluation script cited in the paper)
-    '''
+    """
 
     logger.info('Preparing data initiated...')
     X_train, X_test, X_dev, train_x_c, dev_x_c, test_x_c, \
@@ -108,7 +118,7 @@ def start_multimodal_ner_model():
 
     save_predictions('evaluation/submission.tsv', X_test, truth, predictionss)
 
-    get_wnut_evaluation('evaluation/submission.tsv')
+    get_wnut_evaluation()
 
 
 if __name__ == '__main__':

@@ -19,12 +19,11 @@ def DeepContextualRepresentation(x):
     Helper function to create Emlo embedding lookups
     '''
     return elmo_model(inputs={
-        "tokens": tf.squeeze(tf.cast(x, 'string')),
+        "tokens": tf.squeeze(tf.cast(x, "string")),
         "sequence_len": tf.constant(50 * [sent_max])
     },
         signature="tokens",
         as_dict=True)["elmo"]
-
 
 def getCharCNN(sent_maxlen, word_maxlen, char_vocab_size):
 
@@ -67,21 +66,26 @@ def getResidualBiLSTM(sent_maxlen):
 
     return input_text, word_representations,
 
-
 def build_bilstm_cnn_model(sent_maxlen, word_maxlen, char_vocab, dataset_type):
-
+    case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3, 'other': 4, 'mainly_numeric': 5,
+                'contains_digit': 6, 'PADDING_TOKEN': 7}
+    caseEmbeddings = np.identity(len(case2Idx))
+    character_type_input = Input(shape=(100,), name='character_type_input')
+    case = Embedding( input_dim=len(case2Idx),output_dim=caseEmbeddings.shape[1], weights=[caseEmbeddings], trainable=False)(character_type_input)
     char_vocab_size = len(char_vocab) + 1
+    #case_permmute = Permute((2,1)) (case)
 
     input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
     input_word, word_representations = getResidualBiLSTM(sent_maxlen)
 
-    concat = merge([char_out, word_representations], mode='concat',
-                   concat_axis=2)  # Residual and Highway connections are concatenated
-    ner_lstm = Bidirectional(LSTM(units=200, return_sequences=True,
-                                  recurrent_dropout=0.3, dropout=0.3))(concat)
+    concat = concatenate([word_representations,char_out, case], axis=2)
+
+    #concat = concatenate([concat,char_out ], axis=2)  # Residual and Highway connections are concatenated
+    ner_lstm = Bidirectional(LSTM(units= 200, return_sequences=True,
+                                  recurrent_dropout= 0.3, dropout= 0.3))(concat)
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(ner_lstm)
 
-    model = Model(inputs=[input_word, input_char], outputs=out, name='NER_Model')
+    model = Model(inputs=[input_word, input_char, character_type_input], outputs=out, name='NER_Model')
 
     return model
 

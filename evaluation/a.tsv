@@ -1,0 +1,12 @@
+a	O	O
+b	O	O
+c	I-group	I-corporation
+d	I-corporation	I-corporation
+e	B-person	B-person
+f	B-location	B-location
+a	O	O
+b	O	O
+c	I-group	I-group
+d	I-corporation	I-corporation
+e	B-person	B-person
+f	B-location	B-location
