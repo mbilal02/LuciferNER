@@ -9,6 +9,29 @@ import tensorflow as tf
 ######################################################
 #   Word Matrix and vocabulary build                 #
 ######################################################
+def flatten(list):
+    '''
+    Helper function that flattens 2D lists.
+    '''
+    return [i for sublist in list for i in sublist]
+
+
+wnut_b = {'B-corporation': 12,
+          'B-creative-work': 11,
+          'B-group': 10,
+          'B-location': 9,
+          'B-person': 8,
+          'B-product': 7,
+          'I-corporation': 6,
+          'I-creative-work': 5,
+          'I-group': 4,
+          'I-location': 3,
+          'I-person': 2,
+          'I-product': 1,
+          'O': 0}
+
+case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3,
+            'other': 4, 'mainly_numeric': 5, 'contains_digit': 6, 'PADDING_TOKEN': 7}
 
 
 def learn_embedding(vocab):
@@ -45,6 +68,7 @@ def create_lookup(sentences, voc):
         for word_label in sentence:
             words.append(word_label[0])
             labels.append(word_label[1])
+
             for char in word_label[0]:
                 chars.append(char)
     word_counts = Counter(words)
@@ -64,7 +88,33 @@ def create_lookup(sentences, voc):
     return [vocb_char, labelVoc]
 
 
-def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen, image_features):
+def getCasing(word, caseLookup):
+    casing = 'other'
+
+    numDigits = 0
+    for char in word:
+        if char.isdigit():
+            numDigits += 1
+
+    digitFraction = numDigits / float(len(word))
+
+    if word.isdigit():  # Is a digit
+        casing = 'numeric'
+    elif digitFraction > 0.5:
+        casing = 'mainly_numeric'
+    elif word.islower():  # All lower case
+        casing = 'allLower'
+    elif word.isupper():  # All upper case
+        casing = 'allUpper'
+    elif word[0].isupper():  # is a title, initial char upper, then all lower
+        casing = 'initialUpper'
+    elif numDigits > 0:
+        casing = 'contains_digit'
+
+    return caseLookup[casing]
+
+
+def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
     '''
         This function is used to pad the word into the same length.
     '''
@@ -84,15 +134,18 @@ def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen, 
         x.append(w_id)
         # x_w.append(w)
         y.append(y_id)
+    print(y)
+    # print(y)
 
     y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen, padding="post")
     # x_word = tf.keras.preprocessing.sequence.pad_sequences(x_w, maxlen=sent_maxlen, padding="post")
+    '''
     if image_features != None:
         img_x = np.asarray(image_features)
         img_features.append(img_x)
     else:
         pass
-
+'''
     x_c = []
     for sentence in sentences:
         s_pad = np.zeros([sent_maxlen, word_maxlen], dtype=np.int32)
@@ -113,8 +166,18 @@ def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen, 
             s_pad[sent_maxlen - len(s_c_pad) + i, :len(s_c_pad[i])] = s_c_pad[i]
 
         x_c.append(s_pad)
+    # building cases
 
-    return [x, y, x_c, img_features]
+    addChar = []
+    #    np.zeros(sent_maxlen, word_maxlen)
+    for sentence in sentences:
+        cased_word = []
+        for word_label in sentence:
+            ortho = getCasing(word_label[0], case2Idx)
+            cased_word.append(ortho)
+
+        addChar.append(cased_word)
+    return [x, y, x_c, addChar]
 
 
 def label_index(labels_counts, labelVoc):
@@ -154,7 +217,6 @@ def save_predictions(filename, tweets, labels, predictions):
 
 
 def getLabels(y_test, vocabulary):
-
     '''
     Maps integer to the label map
     '''
@@ -162,10 +224,13 @@ def getLabels(y_test, vocabulary):
     labels = []
     # y = np.array(y_test).tolist()
     for i in y_test:
-        pre = [vocabulary.get(n, n) for n in i]
-        labels.append(pre)
+        for j in i:
+            pre = [k for k, v in vocabulary.items() if v == j]
+            labels.append(pre)
 
     return labels
+
+
 ######################################################
 #   Training history plotting                        #
 ######################################################
