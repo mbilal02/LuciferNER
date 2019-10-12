@@ -30,10 +30,6 @@ wnut_b = {'B-corporation': 12,
           'I-product': 1,
           'O': 0}
 
-case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3,
-            'other': 4, 'mainly_numeric': 5, 'contains_digit': 6, 'PADDING_TOKEN': 7}
-
-
 def learn_embedding(vocab):
     '''
     Creating Global vectors weight matrix, later might be used for initializing the word embeddings layer
@@ -60,6 +56,8 @@ def create_lookup(sentences, voc):
     '''
     Creates character and label lookups
     '''
+
+    # You do not need to worry about character lookups and other stuff at the moment
     words = []
     chars = []
     labels = []
@@ -67,117 +65,32 @@ def create_lookup(sentences, voc):
     for sentence in sentences:
         for word_label in sentence:
             words.append(word_label[0])
+            #only this is important list of list of (word, label) pair 0 index word and 1 index label
             labels.append(word_label[1])
-
-            for char in word_label[0]:
-                chars.append(char)
-    word_counts = Counter(words)
-    vocb_inv = [x[0] for x in word_counts.most_common()]
-    vocb = {x: i + 1 for i, x in enumerate(vocb_inv)}
-    vocb['PAD'] = 0
-    id_to_vocb = {i: x for x, i in vocb.items()}
-
-    char_counts = Counter(chars)
-    vocb_inv_char = [x[0] for x in char_counts.most_common()]
-    vocb_char = {x: i + 1 for i, x in enumerate(vocb_inv_char)}
 
     labels_counts = Counter(labels)
 
     labelVoc_inv, labelVoc = label_index(labels_counts, voc)
 
-    return [vocb_char, labelVoc]
+    return labelVoc
 
-
-def getCasing(word, caseLookup):
-    casing = 'other'
-
-    numDigits = 0
-    for char in word:
-        if char.isdigit():
-            numDigits += 1
-
-    digitFraction = numDigits / float(len(word))
-
-    if word.isdigit():  # Is a digit
-        casing = 'numeric'
-    elif digitFraction > 0.5:
-        casing = 'mainly_numeric'
-    elif word.islower():  # All lower case
-        casing = 'allLower'
-    elif word.isupper():  # All upper case
-        casing = 'allUpper'
-    elif word[0].isupper():  # is a title, initial char upper, then all lower
-        casing = 'initialUpper'
-    elif numDigits > 0:
-        casing = 'contains_digit'
-
-    return caseLookup[casing]
-
-
-def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
+def create_sequences(sentences, labelVoc, word_maxlen, sent_maxlen):
     '''
         This function is used to pad the word into the same length.
     '''
     x = []
-    x_w = []
     y = []
-    img_features = []
+
     for sentence in sentences:
         w_id = []
-        w = []
         y_id = []
         for word_label in sentence:
             w_id.append(word_label[0])
-            # w.append(vocabulary[word_label[0]])
-
             y_id.append(labelVoc[word_label[1]])
         x.append(w_id)
-        # x_w.append(w)
         y.append(y_id)
-    print(y)
-    # print(y)
-
     y = tf.keras.preprocessing.sequence.pad_sequences(y, maxlen=sent_maxlen, padding="post")
-    # x_word = tf.keras.preprocessing.sequence.pad_sequences(x_w, maxlen=sent_maxlen, padding="post")
-    '''
-    if image_features != None:
-        img_x = np.asarray(image_features)
-        img_features.append(img_x)
-    else:
-        pass
-'''
-    x_c = []
-    for sentence in sentences:
-        s_pad = np.zeros([sent_maxlen, word_maxlen], dtype=np.int32)
-        s_c_pad = []
-        for word_label in sentence:
-            w_c = []
-            char_pad = np.zeros([word_maxlen], dtype=np.int32)
-            for char in word_label[0]:
-                w_c.append(vocab_char[char])
-            if len(w_c) <= word_maxlen:
-                char_pad[:len(w_c)] = w_c
-            else:
-                char_pad = w_c[:word_maxlen]
-
-            s_c_pad.append(char_pad)
-
-        for i in range(len(s_c_pad)):
-            s_pad[sent_maxlen - len(s_c_pad) + i, :len(s_c_pad[i])] = s_c_pad[i]
-
-        x_c.append(s_pad)
-    # building cases
-
-    addChar = []
-    #    np.zeros(sent_maxlen, word_maxlen)
-    for sentence in sentences:
-        cased_word = []
-        for word_label in sentence:
-            ortho = getCasing(word_label[0], case2Idx)
-            cased_word.append(ortho)
-
-        addChar.append(cased_word)
-    return [x, y, x_c, addChar]
+    return [x, y, sent_maxlen, word_maxlen]
 
 
 def label_index(labels_counts, labelVoc):
@@ -193,7 +106,6 @@ def label_index(labels_counts, labelVoc):
             if not key in labelVoc:
                 labelVoc.setdefault(key, len(labelVoc))
     return labelVoc_inv, labelVoc
-
 
 ######################################################
 #   Prediction files prepration                      #
@@ -221,14 +133,18 @@ def getLabels(y_test, vocabulary):
     Maps integer to the label map
     '''
     #
-    labels = []
+    classes = []
     # y = np.array(y_test).tolist()
     for i in y_test:
-        for j in i:
-            pre = [k for k, v in vocabulary.items() if v == j]
-            labels.append(pre)
+        label = []
+        pre = [[k for k, v in vocabulary.items() if v == j] for j in i]
+        for i in pre:
+            for j in i:
+                label.append(j)
+        classes.append(label)
+    return classes
 
-    return labels
+
 
 
 ######################################################
