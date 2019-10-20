@@ -15,7 +15,7 @@ gradle-app.setting
 
 ENV
 
-.idea
+.idea/
 
 **/*.pyc
 

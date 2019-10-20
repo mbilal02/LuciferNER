@@ -9,7 +9,7 @@ from keras.layers import Embedding, Reshape, TimeDistributed, Conv1D, MaxPooling
 # sent_max= 100
 
 
-def simple_word_level_model(sent_maxlen, dataset_type):
+def simple_word_level_model(sent_maxlen, dataset_type, params):
     sess = tf.Session()
     K.set_session(sess)
 
@@ -34,14 +34,14 @@ def simple_word_level_model(sent_maxlen, dataset_type):
     input_text = Input(shape=(sent_maxlen,), dtype='string')
     embedding = Lambda(DeepContextualRepresentation, output_shape=(sent_maxlen, 1024))(input_text)
     # hidden layers
-    word = Bidirectional(LSTM(units=512, return_sequences=True,
+    word = Bidirectional(LSTM(units=params['hidden_units'], return_sequences=True,
                               recurrent_dropout=0.5, dropout=0.5, kernel_regularizer=regularizers.l2(0.001)))(embedding)
-    word_ = Bidirectional(LSTM(units=512, return_sequences=True,
+    word_ = Bidirectional(LSTM(units=params['hidden_units'], return_sequences=True,
                                recurrent_dropout=0.5, dropout=0.5, kernel_regularizer=regularizers.l2(0.001)))(word)
     word_representations = add([word, word_])  # residual connection
 
-    ner_lstm = Bidirectional(LSTM(units=200, return_sequences=True,
-                                  recurrent_dropout=0.3, dropout=0.3, name="Fully_connected"))(word_representations)
+    ner_lstm = Bidirectional(LSTM(units=params['units'], return_sequences=True,
+                                  recurrent_dropout=params['dropout'], dropout=params['dropout'], name="Fully_connected"))(word_representations)
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(ner_lstm)
 
     model = Model(inputs=[input_text], outputs=out, name='NER_Model')
