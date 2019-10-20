@@ -4,8 +4,8 @@ import pickle
 
 import talos
 
-from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.optimizers import Adam, RMSprop, Nadam
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.optimizers import Adam, RMSprop, Nadam
 from sklearn.metrics import f1_score, classification_report
 
 from algorithm.network import simple_word_level_model
