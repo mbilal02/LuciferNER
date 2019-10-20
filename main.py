@@ -13,6 +13,7 @@ from numpy.random import seed
 
 from utilities.setting import B, wnut_b, multi_modal, C
 from utilities.utilities import getLabels, save_predictions
+import time
 
 seed(7)
 
@@ -77,4 +78,6 @@ def start_NER_Model():
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     start_NER_Model()
+    print("\nThis took %s minutes to run !!" % ((time.time() - start_time)/60))
