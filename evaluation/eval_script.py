@@ -502,7 +502,7 @@ def fmt_results(tokens, all_entities, surface_form=False):
 
 def get_wnut_evaluation():
     # get tokens and entities
-    lines = [line for line in open('exp1b.tsv', mode='r', encoding='utf8')]
+    lines = [line for line in open('t.tsv', mode='r', encoding='utf8')]
     tokens = doc_to_toks(lines)
     entities = doc_to_entities(lines)
 

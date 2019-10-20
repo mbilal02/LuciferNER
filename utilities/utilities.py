@@ -1,5 +1,7 @@
 import csv
 from collections import Counter
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy
 import numpy as np
@@ -124,7 +126,7 @@ def save_predictions(filename, tweets, labels, predictions):
     dataset, i = [], 0
     for n, tweet in enumerate(tweets):
         tweet_data = list(zip(tweet, labels[n], predictions[n]))
-        dataset += tweet_data
+        dataset += tweet_data + [()]
     write_file(filename, dataset)
 
 
