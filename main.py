@@ -4,8 +4,8 @@ import pickle
 
 import talos
 
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-from tensorflow.keras.optimizers import Adam, RMSprop, Nadam
+from keras.callbacks import ModelCheckpoint, EarlyStopping
+from keras.optimizers import Adam, RMSprop, Nadam
 from sklearn.metrics import f1_score, classification_report
 
 from algorithm.network import simple_word_level_model
@@ -93,7 +93,7 @@ def start_experiment():
                , experiment_name='first'
                )
     t = project_object(tt, 'params', 'saved_models', 'saved_weights', 'data', 'details', 'round_history')
-    save_object(t, 'result-maq.pickle')
+    save_object(t, 'result.pickle')
     gc.collect()
 
     # model.save('Ner_word_character.h5')

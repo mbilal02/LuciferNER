@@ -1,9 +1,9 @@
 import tensorflow as tf
 import tensorflow_hub as hub
-from tensorflow.keras import Input
-from tensorflow.keras import backend as K, Model
-from tensorflow.keras.initializers import RandomUniform
-from tensorflow.keras.layers import Embedding, Reshape, TimeDistributed, Conv1D, MaxPooling1D, regularizers, np, Flatten, Dropout, \
+from keras import Input
+from keras import backend as K, Model
+from keras.initializers import RandomUniform
+from keras.layers import Embedding, Reshape, TimeDistributed, Conv1D, MaxPooling1D, regularizers, np, Flatten, Dropout, \
     Bidirectional, LSTM, add, merge, Lambda, Dense, Permute, RepeatVector, concatenate, Activation, dot
 
 # sent_max= 100
