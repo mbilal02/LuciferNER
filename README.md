@@ -1,4 +1,4 @@
-# Named-Entity-recognition-in-tweets-using-Bidirectional-LSTM-with-attention
+# LuciferNer
 
 Required packages
 * tensorflow==1.14
