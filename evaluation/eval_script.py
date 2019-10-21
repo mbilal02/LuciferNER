@@ -502,7 +502,7 @@ def fmt_results(tokens, all_entities, surface_form=False):
 
 def get_wnut_evaluation(file):
     # get tokens and entities
-    lines = [line for line in open(file, mode='r')]
+    lines = [line for line in open(file, mode='r', encoding='utf8')]
     tokens = doc_to_toks(lines)
     entities = doc_to_entities(lines)
 

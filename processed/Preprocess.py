@@ -1,19 +1,31 @@
 from random import seed
 from nltk.corpus.reader.conll import ConllCorpusReader
-import numpy as np
-from utilities.setting import DEV, TEST, TRAIN, TRAIN_M, DEV_M, TEST_M, img_feature_file
+from nltk.tokenize.treebank import TreebankWordDetokenizer
+
+from utilities.setting import DEV, TEST, TRAIN, TRAIN_M, DEV_M, TEST_M
 from utilities.utilities import create_lookup, create_sequences
 
 seed(7)
+
+
 def conllReader(corpus):
     '''
     Data reader for CoNLL format data
     '''
     root = "data/"
+    sentences = []
 
     ccorpus = ConllCorpusReader(root, ".conll", ('words', 'pos', 'tree'))
 
-    return ccorpus.tagged_sents(corpus)
+    raw = ccorpus.sents(corpus)
+
+    for sent in raw:
+        sentences.append([TreebankWordDetokenizer().detokenize(sent)])
+
+    tagged = ccorpus.tagged_sents(corpus)
+
+
+    return tagged, sentences
 
 
 def build_lookups(train_name, dev_name, test_name, voc):
@@ -44,9 +56,9 @@ def build_lookups(train_name, dev_name, test_name, voc):
     char_lookup, label_lookup = create_lookup(sentences, voc)
 
     # considring a higher valued max sent_length
-    max_sent= 100
 
-    return [sentences, max_sent, word_maxlen, num_sentence, char_lookup, label_lookup]
+    sent_maxlen= 100
+    return [sentences, sent_maxlen, word_maxlen, num_sentence, char_lookup, label_lookup]
 
 
 def build_image_sequences(train_name, dev_name, test_name, labels):
@@ -84,18 +96,18 @@ def build_image_sequences(train_name, dev_name, test_name, labels):
     splits.append(len(img_id))
     num_sentence = len(sentences)
     char_lookup, label_lookup = create_lookup(sentences, labels)
+    '''
     for image in img_id:
         feature = img_feature_file.get(image)
         np_feature = np.array(feature)
         image_feature.append(np_feature)
-
+    '''
     # considring a higher valued max sent_length
-    max_sent = 100
 
-    X, Y, X_c, X_img = create_sequences(sentences, char_lookup, label_lookup,
-                                        word_maxlen, max_sent, image_features=image_feature)
+    X, Y, X_c, addChar = create_sequences(sentences, char_lookup, label_lookup,
+                                          word_maxlen, sent_maxlen)
+    return [splits, X, Y, X_c, addChar, sent_maxlen, word_maxlen, char_lookup, num_sentence]
 
-    return [splits, X, Y, X_c, X_img, sent_maxlen, word_maxlen, char_lookup, num_sentence]
 
 def flatten(list):
     '''
@@ -104,13 +116,14 @@ def flatten(list):
     return [i for sublist in list for i in sublist]
 
 
-def sequence_helper(x_in, sent_maxlen):
+def sequence_helper(x_in, sent_maxlen, casing=False):
     '''
     Helper function for word sequences (text data sepcific)
     :param x_in:
     :param sent_maxlen:
     :return: Word sequences
     '''
+
     new_X = []
     for seq in x_in:
         new_seq = []
@@ -118,7 +131,27 @@ def sequence_helper(x_in, sent_maxlen):
             try:
                 new_seq.append(seq[i])
             except:
-                new_seq.append("__PAD__")
+                new_seq.append('__pad__')
+        new_X.append(new_seq)
+    return new_X
+
+
+def case_helper(x_in, sent_maxlen):
+    '''
+    Helper function for word sequences (text data sepcific)
+    :param x_in:
+    :param sent_maxlen:
+    :return: Word sequences
+    '''
+
+    new_X = []
+    for seq in x_in:
+        new_seq = []
+        for i in range(sent_maxlen):
+            try:
+                new_seq.append(seq[i])
+            except:
+                new_seq.append(int('7'))
         new_X.append(new_seq)
     return new_X
 
@@ -131,21 +164,26 @@ def start_build_sequences(vocabulary):
     '''
     sentences, sent_maxlen, word_maxlen, \
     num_sentence, char_lookup, label_lookup = build_lookups(TRAIN, DEV, TEST, vocabulary)
-    train_sent = conllReader(TRAIN)
-    dev_sent = conllReader(DEV)
-    test_sent = conllReader(TEST)
+    train_sent, train_dt_sent = conllReader(TRAIN)
+    dev_sent, dev_dt_sent = conllReader(DEV)
+    test_sent, test_dt_sent = conllReader(TEST)
+
     # logger.info('Setting up input sequences')
-    x, y, x_c, _ = create_sequences(train_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen,
-                                    image_features=None)
-    x_t, y_t, xc_t, _ = create_sequences(test_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen,
-                                         image_features=None)
-    x_d, y_d, xc_d, _ = create_sequences(dev_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen,
-                                         image_features=None)
+    x, y, x_c, addCharTrain = create_sequences(train_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen)
+    x_t, y_t, xc_t, addCharTest = create_sequences(test_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen)
+    x_d, y_d, xc_d, addCharDev = create_sequences(dev_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen)
     X_train = sequence_helper(x, sent_maxlen)
     X_test = sequence_helper(x_t, sent_maxlen)
     X_dev = sequence_helper(x_d, sent_maxlen)
+    caseTrain = case_helper(addCharTrain, sent_maxlen)
+    caseTest = case_helper(addCharTest, sent_maxlen)
+    caseDev = case_helper(addCharDev, sent_maxlen)
+    print(caseTrain)
 
-    return [X_train, X_dev, X_test, x_c, xc_d, xc_t, y, y_d, y_t, char_lookup, sent_maxlen, word_maxlen]
+    return [train_dt_sent, dev_dt_sent, test_dt_sent, X_train, X_dev, X_test, x_c, xc_d, xc_t, y, y_d, y_t, caseTrain,
+            caseDev,
+            caseTest, char_lookup,
+            sent_maxlen, word_maxlen]
 
 
 def start_build_image_sequences(vocabulary):

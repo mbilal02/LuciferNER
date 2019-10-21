@@ -2,11 +2,18 @@ from enum import Enum
 
 import h5py
 
+######################################################
+#                     Architectures                  #
+######################################################
+BASE_MODEL = 'base'
+EXTENDED_BASE_MODEL= 'extended_base'
+SIMPLE_TEXT_ATTENTION = 'text_attention_a'
+SEGREGATED_TEXT_ATTENTION = 'segregated_attention'
 
 ######################################################
 #                     Important constants            #
 ######################################################
-A = 23
+A = 21
 B = 13
 C = 9
 UNK_TOKEN= '<UNK>'
@@ -35,8 +42,8 @@ TEST_ = "test_2016"
 TRAIN_M = "train_i"
 DEV_M = "dev_i"
 TEST_M = "test_i"
-feat_file = 'models/feat_file.h5'
-img_feature_file = h5py.File((feat_file), 'r')
+#feat_file = 'models/feat_file.h5'
+#img_feature_file = h5py.File((feat_file), 'r')
 
 
 
