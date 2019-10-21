@@ -1,4 +1,5 @@
 tensorflow_hub
+tensorflow_gpu
 gensim
 nltk
 matplotlib

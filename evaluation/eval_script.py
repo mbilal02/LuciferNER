@@ -500,9 +500,9 @@ def fmt_results(tokens, all_entities, surface_form=False):
         yield('FB1: %6.2f  %d\n' % (100. * results.f, results.correct))
 
 
-def get_wnut_evaluation():
+def get_wnut_evaluation(file):
     # get tokens and entities
-    lines = [line for line in open('exp1b.tsv', mode='r', encoding='utf8')]
+    lines = [line for line in open(file, mode='r', encoding='utf8')]
     tokens = doc_to_toks(lines)
     entities = doc_to_entities(lines)
 
@@ -515,6 +515,5 @@ def get_wnut_evaluation():
     for line in fmt_results(tokens, entities, surface_form=True):
         print(line)
 
-if __name__ == '__main__':
- get_wnut_evaluation()
+
 

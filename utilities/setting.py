@@ -2,6 +2,13 @@ from enum import Enum
 
 import h5py
 
+######################################################
+#                     Architectures                  #
+######################################################
+BASE_MODEL = 'base'
+EXTENDED_BASE_MODEL= 'extended_base'
+SIMPLE_TEXT_ATTENTION = 'text_attention_a'
+SEGREGATED_TEXT_ATTENTION = 'segregated_attention'
 
 ######################################################
 #                     Important constants            #

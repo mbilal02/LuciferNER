@@ -1,4 +1,5 @@
 import csv
+import re
 from collections import Counter
 import matplotlib.pyplot as plt
 import numpy
@@ -148,11 +149,11 @@ def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
 '''
     x_c = []
     for sentence in sentences:
-        s_pad = np.zeros([sent_maxlen, word_maxlen], dtype=np.int32)
+        s_pad = np.zeros([sent_maxlen, word_maxlen], dtype=np.int)
         s_c_pad = []
         for word_label in sentence:
             w_c = []
-            char_pad = np.zeros([word_maxlen], dtype=np.int32)
+            char_pad = np.zeros([word_maxlen], dtype=np.int)
             for char in word_label[0]:
                 w_c.append(vocab_char[char])
             if len(w_c) <= word_maxlen:
@@ -166,6 +167,7 @@ def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
             s_pad[sent_maxlen - len(s_c_pad) + i, :len(s_c_pad[i])] = s_c_pad[i]
 
         x_c.append(s_pad)
+
     # building cases
 
     addChar = []
@@ -212,7 +214,7 @@ def save_predictions(filename, tweets, labels, predictions):
     dataset, i = [], 0
     for n, tweet in enumerate(tweets):
         tweet_data = list(zip(tweet, labels[n], predictions[n]))
-        dataset += tweet_data
+        dataset += tweet_data + [()]
     write_file(filename, dataset)
 
 
@@ -221,14 +223,16 @@ def getLabels(y_test, vocabulary):
     Maps integer to the label map
     '''
     #
-    labels = []
+    classes = []
     # y = np.array(y_test).tolist()
     for i in y_test:
-        for j in i:
-            pre = [k for k, v in vocabulary.items() if v == j]
-            labels.append(pre)
-
-    return labels
+        label = []
+        pre = [[k for k, v in vocabulary.items() if v == j] for j in i]
+        for i in pre:
+            for j in i:
+                label.append(j)
+        classes.append(label)
+    return classes
 
 
 ######################################################
