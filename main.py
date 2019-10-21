@@ -7,6 +7,7 @@ import talos
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.optimizers import Adam, RMSprop, Nadam
 from sklearn.metrics import f1_score, classification_report
+from talos.model import lr_normalizer
 
 from algorithm.network import simple_word_level_model
 from evaluation.eval_script import get_wnut_evaluation
@@ -43,12 +44,12 @@ def NERmodel(x_train, y_train, x_val, y_val, params):
     global sml
     model = simple_word_level_model(sml, B, params)
     rms = RMSprop(lr=params['lr'], rho=0.9, epsilon=None, decay=0.0)
-    model.compile(optimizer=rms, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=rms, loss='sparse_categorical_crossentropy', metrics=['acc', talos.utils.metrics.f1score])
     model.summary()
-    checkpointer = ModelCheckpoint(filepath='models/w_c_best_model2019.hdf5', verbose=1, save_best_only=True)
-    earlystopper = EarlyStopping(monitor='val_loss', patience=3, verbose=1)
+    #checkpointer = ModelCheckpoint(filepath='models/w_c_best_model2019.hdf5', verbose=1, save_best_only=True)
+    #earlystopper = EarlyStopping(monitor='val_loss', patience=3, verbose=1)
     out = model.fit(x_train, y_train,
-                    epochs=12, batch_size=50, verbose=1, callbacks=[checkpointer, earlystopper],
+                    epochs=50, batch_size=params['batch'], verbose=1,
                     validation_data=(x_val, y_val), shuffle=True)
 
     return out, model
@@ -61,10 +62,11 @@ def start_experiment():
     '''
     parameters = {
         'units': [1024, 512, 300, 200, 100, 64],
-        'dropout': [0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.10, 0.15, 0.25],
-        'hidden_units': [1024, 512, 300, 200, 100],
-        'optimizer': [Adadelta, RmsProp, Adam, Nadam, SGD],
-        'lr': [0.19, 0.001]
+        'dropout': [0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.25, 0.15],
+        'hidden_units': [1024, 512, 300, 200, 100, 64],
+        'lr': [0.19,0.01, 0.001, 0.0001],
+        'optimizer':['nadam', 'adam', 'rmsprop', 'sgd'],
+        'batch':[100]
     }
 
     print('Preparing data sequences ')
@@ -91,6 +93,7 @@ def start_experiment():
                , x_val=x_val
                , y_val=y_val
                , experiment_name='first'
+               , round_limit=10
                )
     t = project_object(tt, 'params', 'saved_models', 'saved_weights', 'data', 'details', 'round_history')
     save_object(t, 'result.pickle')
