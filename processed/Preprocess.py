@@ -57,7 +57,7 @@ def build_lookups(train_name, dev_name, test_name, voc):
 
     # considring a higher valued max sent_length
 
-    sent_maxlen= 100
+
     return [sentences, sent_maxlen, word_maxlen, num_sentence, char_lookup, label_lookup]
 
 

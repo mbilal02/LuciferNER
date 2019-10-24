@@ -9,6 +9,7 @@ BASE_MODEL = 'base'
 EXTENDED_BASE_MODEL= 'extended_base'
 SIMPLE_TEXT_ATTENTION = 'text_attention_a'
 SEGREGATED_TEXT_ATTENTION = 'segregated_attention'
+EXTENDED_SENTENCE_MODEL = 'sentence_model'
 
 ######################################################
 #                     Important constants            #

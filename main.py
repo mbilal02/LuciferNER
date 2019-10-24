@@ -6,7 +6,7 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.optimizers import RMSprop
 from numpy.random import seed
 
-from algorithm.network import build_bilstm_cnn_model, network_model
+from algorithm.network import build_bilstm_cnn_model, network_model, EXTENDED_SENTENCE_MODEL
 from evaluation.eval import Evaluator
 from evaluation.eval_script import get_wnut_evaluation
 from processed.Preprocess import start_build_sequences
@@ -48,6 +48,7 @@ class LuciferNER:
         y_t, addCharTrain, addCharDev, \
         addCharTest, char_lookup, sent_maxlen, word_maxlen = start_build_sequences(
             vocabulary=wnut_b)
+        print(sent_maxlen)
         y = y.reshape(y.shape[0], y.shape[1], 1)
         y_t = y_t.reshape(y_t.shape[0], y_t.shape[1], 1)
         y_d = y_d.reshape(y_d.shape[0], y_d.shape[1], 1)
@@ -85,6 +86,21 @@ class LuciferNER:
             res, agg = self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type)
             get_wnut_evaluation(filename)
             return res, agg
+        elif self.architecture == EXTENDED_SENTENCE_MODEL:
+            model.fit([np.array(x_c), np.array(X_train), np.array(addCharTrain), np.array(train_sent)], y,
+                      epochs=self.epochs,
+                      batch_size=self.batch_size,
+                      verbose=1,
+                      callbacks=[checkpointer, earlystopper],
+                      validation_data=([np.array(xc_d), np.array(X_dev), np.array(addCharDev), np.array(dev_sent)], y_d),
+                      shuffle=True)
+            predict = model.predict([np.array(xc_t), np.array(X_test), np.array(addCharTest), np.array(test_sent)],
+                                    verbose=1,
+                                    batch_size=self.batch_size)
+            res, agg = self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type)
+            get_wnut_evaluation(filename)
+            return res, agg
+
         else:
 
                 model.fit([np.array(x_c), np.array(X_train), np.array(addCharTrain)], y,
@@ -111,31 +127,33 @@ class LuciferNER:
         get_wnut_evaluation(filename)
         if dataset_type == wnut_b:
             evaluator = Evaluator(true=true, pred=predictions, tags=label_b)
-            return evaluator.evaluate()
+            res, agg= evaluator.evaluate()
+            return res, agg
         elif dataset_type == wnut_a:
             evaluator = Evaluator(true=true, pred=predictions, tags=label_a)
-            return evaluator.evaluate()
+            res, agg= evaluator.evaluate()
+            return res, agg
         else:
             evaluator = Evaluator(true=true, pred=predictions, tags=label_m)
-            return evaluator.evaluate()
+            res, agg = evaluator.evaluate()
+            return res, agg
 
 
 if __name__ == '__main__':
-    experiments = [BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION]
+    experiments = [BASE_MODEL, EXTENDED_BASE_MODEL,EXTENDED_SENTENCE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION]
 
-    for id, exp in enumerate(experiments, start=0):
-        print('Running %s model ' % exp)
-        ner = LuciferNER(architecture=exp,
-                         batch_size=100,
+
+    ner = LuciferNER(architecture=EXTENDED_SENTENCE_MODEL,
+                         batch_size=50,
                          n_epochs=100,
                          patience=10,
                          lr_r=0.001)
-        results, results_agg = ner.run(filename='00' + str(id) + '.tsv',
+    results, results_agg = ner.run(filename='005.tsv',
                                        dataset_type=B,
-                                       model_file='textual' + str(id) + 'model',
+                                       model_file='textual_model5',
                                        label_vocab=wnut_b)
 
-        print('Building results for'.format(exp))
-        print(results)
-        print(results_agg)
-        print('/------------------------End Experiment------------------------------/')
+
+    print(results)
+    print(results_agg)
+    print('/------------------------End Experiment------------------------------/')

@@ -12,17 +12,6 @@ from keras.optimizers import RMSprop
 from evaluation.eval import Evaluator
 from evaluation.eval_script import get_wnut_evaluation
 from utilities.setting import *
-
-# session = tf.Session()
-# K.set_session(session)
-# module_url = "https://tfhub.dev/google/universal-sentence-encoder-large/3"
-# embed = hub.Module(module_url)
-# session.run(tf.global_variables_initializer())
-# session.run(tf.tables_initializer())
-#
-# def UniversalEmbedding(x):
-#     return embed(tf.squeeze(tf.cast(x, tf.string)),
-#             signature="default", as_dict=True)["default"]
 from utilities.utilities import getLabels, save_predictions
 
 
@@ -38,6 +27,9 @@ def network_model(sent_maxlen, word_maxlen, char_vocab, dataset_type, architectu
         return model
     elif architecture == SEGREGATED_TEXT_ATTENTION:
         model = build_bilstm_cnn_segregated_attention_model(sent_maxlen, word_maxlen, char_vocab, dataset_type)
+        return model
+    elif architecture == EXTENDED_SENTENCE_MODEL:
+        model = build_bilstm_cnn_sentence_model(sent_maxlen, word_maxlen, char_vocab, dataset_type)
         return model
     else:
         pass
@@ -58,7 +50,7 @@ class ElmoEmbeddingLayer(Layer):
     def call(self, x, mask=None):
         result = self.elmo(inputs={
             "tokens": tf.squeeze(tf.cast(x, "string")),
-            "sequence_len": tf.constant(100 * [100])
+            "sequence_len": tf.constant(50 * [105])
         },
             signature="tokens",
             as_dict=True)["elmo"]
@@ -68,7 +60,7 @@ class ElmoEmbeddingLayer(Layer):
         # return K.not_equal(inputs, '__PAD__')
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0], 100, self.dimensions)
+        return (input_shape[0], 105, self.dimensions)
 
 def getCharCNN(sent_maxlen, word_maxlen, char_vocab_size):
     '''
@@ -103,8 +95,6 @@ def getResidualBiLSTM(sent_maxlen):
     '''
     sess = tf.Session()
     K.set_session(sess)
-
-    elmo_model = hub.Module("https://tfhub.dev/google/elmo/2", trainable=True)
     sess.run(tf.global_variables_initializer())
     sess.run(tf.tables_initializer())
     # def DeepContextualRepresentation(x):
@@ -134,13 +124,24 @@ def getResidualBiLSTM(sent_maxlen):
     return input_text, word_representations,
 
 
-# def sentence_embedding_encoder(sent_max):
-#     input_text = Input(shape=(1,), dtype='string')
-#     embedding = Lambda(UniversalEmbedding, output_shape=(512,))(input_text)
-#     #embedding= Reshape([sent_max,512]) (embedding)
-#     sentence_encoder =Dense(units=256, activation='relu') (embedding)
+def sentence_embedding_encoder():
 
-#   return input_text, sentence_encoder
+    def UniversalEmbedding(x):
+        session = tf.Session()
+        K.set_session(session)
+        module_url = "https://tfhub.dev/google/universal-sentence-encoder-large/3"
+        embed = hub.Module(module_url)
+        session.run(tf.global_variables_initializer())
+        session.run(tf.tables_initializer())
+        return embed(tf.squeeze(tf.cast(x, tf.string)),
+                     signature="default", as_dict=True)["default"]
+    input_text = Input(shape=(1,), dtype='string')
+    embedding = Lambda(UniversalEmbedding, output_shape=(512,))(input_text)
+    #embedding= Reshape([sent_max,512]) (embedding)
+    sentence_encoder =Dense(units=256, activation='relu') (embedding)
+
+    return input_text, sentence_encoder
+
 def build_bilstm_cnn_model(sent_maxlen, word_maxlen, char_vocab, dataset_type):
     char_vocab_size = len(char_vocab) + 1
 
@@ -168,7 +169,6 @@ def build_bilstm_cnn_case_model(sent_maxlen, word_maxlen, char_vocab, dataset_ty
                                  name='character_type_input')
     case = Embedding(input_dim=len(case2Idx),
                      output_dim=caseEmbeddings.shape[1],
-                     trainable=False,
                      weights=[caseEmbeddings])(character_type_input)
     char_vocab_size = len(char_vocab) + 1
     #data = dataset_type
@@ -188,6 +188,36 @@ def build_bilstm_cnn_case_model(sent_maxlen, word_maxlen, char_vocab, dataset_ty
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(final_lstm)
 
     model = Model(inputs=[input_char, input_word, character_type_input],
+                  outputs=out,
+                  name='NER_Model')
+    return model
+def build_bilstm_cnn_sentence_model(sent_maxlen, word_maxlen, char_vocab, dataset_type):
+    case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3, 'other': 4, 'mainly_numeric': 5,
+                'contains_digit': 6, 'PADDING_TOKEN': 7}
+    caseEmbeddings = np.identity(len(case2Idx))
+    character_type_input = Input(shape=(sent_maxlen,),
+                                 name='character_type_input')
+    case = Embedding(input_dim=len(case2Idx),
+                     output_dim=caseEmbeddings.shape[1],
+                     weights=[caseEmbeddings])(character_type_input)
+    char_vocab_size = len(char_vocab) + 1
+    #data = dataset_type
+    # case_permmute = Permute((2,1)) (case)
+    sent_input, sent_out = sentence_embedding_encoder()
+    input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
+    input_word, word_representations = getResidualBiLSTM(sent_maxlen)
+    sent_out = RepeatVector(sent_maxlen)(sent_out)
+    concat = merge([word_representations, char_out, case, sent_out],
+                   mode='concat',
+                   concat_axis=2)
+
+    final_lstm = Bidirectional(LSTM(200,
+                                    return_sequences=True,
+                                    recurrent_dropout=0.3,
+                                    dropout=0.3))(concat)
+    out = TimeDistributed(Dense(dataset_type, activation="softmax"))(final_lstm)
+
+    model = Model(inputs=[input_char, input_word, character_type_input, sent_input],
                   outputs=out,
                   name='NER_Model')
     return model
