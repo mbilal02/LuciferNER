@@ -23,12 +23,6 @@ seed(7)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-label_a = ['tv-show', 'person', 'product', 'music-artist', 'movie', 'facility', 'company', 'geo-loc', 'other',
-           'sportsteam']
-label_b = ['person', 'location', 'creative-work', 'corporation', 'product', 'group']
-label_m = ['PER', 'ORG', 'LOC', 'OTHER']
-
-
 class LuciferNER:
     def __init__(self, architecture, batch_size, n_epochs, patience, lr_r):
         self.architecture = architecture
@@ -119,6 +113,10 @@ class LuciferNER:
 
 
     def get_prediction(self, x, y, predict, filename, label_vocab, dataset_type):
+        label_a = ['tv-show', 'person', 'product', 'music-artist', 'movie', 'facility', 'company', 'geo-loc', 'other',
+                   'sportsteam']
+        label_b = ['person', 'location', 'creative-work', 'corporation', 'product', 'group']
+        label_m = ['PER', 'ORG', 'LOC', 'OTHER']
         prediction = np.argmax(predict, axis=-1)
         prediction_final = np.array(prediction).tolist()
         predictions = getLabels(prediction_final, vocabulary=label_vocab)
@@ -143,12 +141,12 @@ if __name__ == '__main__':
     experiments = [BASE_MODEL, EXTENDED_BASE_MODEL,EXTENDED_SENTENCE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION]
 
 
-    ner = LuciferNER(architecture=EXTENDED_SENTENCE_MODEL,
+    ner = LuciferNER(architecture=SIMPLE_TEXT_ATTENTION,
                          batch_size=50,
                          n_epochs=100,
                          patience=10,
                          lr_r=0.001)
-    results, results_agg = ner.run(filename='005.tsv',
+    results, results_agg = ner.run(filename='007.tsv',
                                        dataset_type=B,
                                        model_file='textual_model5',
                                        label_vocab=wnut_b)
