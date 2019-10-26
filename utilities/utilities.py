@@ -128,7 +128,7 @@ def create_sequences(sentences, vocab_char, labelVoc, word_maxlen, sent_maxlen):
         w = []
         y_id = []
         for word_label in sentence:
-            w_id.append(word_label[0])
+            w_id.append(re.sub(r"http\S+", "url",word_label[0]))
             # w.append(vocabulary[word_label[0]])
 
             y_id.append(labelVoc[word_label[1]])
@@ -254,3 +254,27 @@ def show_training_loss_plot(hist):
     plt.ylabel("loss")
     plt.legend(loc="best")
     plt.show()
+
+def fbeta_score(y_true, y_pred, beta=1):
+    if beta < 0:
+        raise ValueError('The lowest chosable beta is zero (only precision).')
+    from keras import backend as K
+    # Count positive samples.
+    c1 = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    c2 = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    c3 = K.sum(K.round(K.clip(y_true, 0, 1)))
+
+    # If there are no true samples, fix the F score at 0.
+    if c3 == 0:
+        return 0
+
+    # How many selected items are relevant?
+    precision = c1 / c2
+
+    # How many relevant items are selected?
+    recall = c1 / c3
+
+    # Weight precision and recall together as a single scalar.
+    beta2 = beta ** 2
+    f_score = (1 + beta2) * (precision * recall) / (beta2 * precision + recall)
+    return f_score

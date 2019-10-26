@@ -103,7 +103,6 @@ def build_image_sequences(train_name, dev_name, test_name, labels):
         image_feature.append(np_feature)
     '''
     # considring a higher valued max sent_length
-
     X, Y, X_c, addChar = create_sequences(sentences, char_lookup, label_lookup,
                                           word_maxlen, sent_maxlen)
     return [splits, X, Y, X_c, addChar, sent_maxlen, word_maxlen, char_lookup, num_sentence]

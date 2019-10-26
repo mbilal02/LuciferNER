@@ -6,7 +6,8 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.engine import Layer
 from keras.initializers import RandomUniform
 from keras.layers import Embedding, Reshape, TimeDistributed, Conv1D, MaxPooling1D, regularizers, np, Flatten, Dropout, \
-    Bidirectional, LSTM, add, merge, Lambda, Dense, Permute, RepeatVector, concatenate, Activation, dot
+    Bidirectional, LSTM, add, merge, Lambda, Dense, Permute, RepeatVector, concatenate, Activation, dot, \
+    GlobalAveragePooling1D
 from keras.optimizers import RMSprop
 
 from evaluation.eval import Evaluator
@@ -50,7 +51,7 @@ class ElmoEmbeddingLayer(Layer):
     def call(self, x, mask=None):
         result = self.elmo(inputs={
             "tokens": tf.squeeze(tf.cast(x, "string")),
-            "sequence_len": tf.constant(50 * [105])
+            "sequence_len": tf.constant(20 * [105])
         },
             signature="tokens",
             as_dict=True)["elmo"]
@@ -77,17 +78,15 @@ def getCharCNN(sent_maxlen, word_maxlen, char_vocab_size):
                                                                       maxval=np.sqrt(3 / char_out_dim)))(char_input)
     # dropout = Dropout(0.5)(char_in)
     c_reshape = Reshape((sent_maxlen, word_maxlen, 30))(char_embed_layer)
-    conv1d_out = TimeDistributed(Conv1D(kernel_size=3,
-                                        filters=30,
-                                        padding='same',
-                                        activation='tanh',
-                                        strides=1,
-                                        kernel_regularizer=regularizers.l2(0.001)))(c_reshape)
-    maxpool_out = TimeDistributed(MaxPooling1D(sent_maxlen))(conv1d_out)
-    char = TimeDistributed(Flatten())(maxpool_out)
-    charOutput = Dropout(0.5)(char)
+    conv_net = TimeDistributed(Conv1D(filters=64, kernel_size=3, activation='relu'))(c_reshape)
+    conv_net = TimeDistributed(Conv1D(filters=64, kernel_size=3, activation='relu')) (conv_net)
+    conv_net = TimeDistributed(GlobalAveragePooling1D())(conv_net)
+    conv_net = TimeDistributed(Dense(32, activation='relu', name='conv_dense')) (conv_net)
+    #maxpool_out = TimeDistributed(MaxPooling1D(sent_maxlen))(conv1d_out)
+    #char = TimeDistributed(Flatten())(maxpool_out)
+    #charOutput = Dropout(0.5)(char)
 
-    return char_input, charOutput
+    return char_input, conv_net
 
 def getResidualBiLSTM(sent_maxlen):
     '''
@@ -111,13 +110,13 @@ def getResidualBiLSTM(sent_maxlen):
     embedding = ElmoEmbeddingLayer()(input_text)
     word = Bidirectional(LSTM(units=512,
                               return_sequences=True,
-                              recurrent_dropout=0.5,
-                              dropout=0.5,
+                              recurrent_dropout=0.2,
+                              dropout=0.2,
                               kernel_regularizer=regularizers.l2(0.001)))(embedding)
     word_ = Bidirectional(LSTM(units=512,
                                return_sequences=True,
-                               recurrent_dropout=0.5,
-                               dropout=0.5,
+                               recurrent_dropout=0.2,
+                               dropout=0.2,
                                kernel_regularizer=regularizers.l2(0.001)))(word)
     word_representations = add([word, word_])  # residual connection
 
@@ -207,14 +206,14 @@ def build_bilstm_cnn_sentence_model(sent_maxlen, word_maxlen, char_vocab, datase
     input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
     input_word, word_representations = getResidualBiLSTM(sent_maxlen)
     sent_out = RepeatVector(sent_maxlen)(sent_out)
-    concat = merge([word_representations, char_out, case, sent_out],
+    wc = merge([word_representations, case, char_out, sent_out],
                    mode='concat',
                    concat_axis=2)
-
     final_lstm = Bidirectional(LSTM(200,
                                     return_sequences=True,
                                     recurrent_dropout=0.3,
-                                    dropout=0.3))(concat)
+                                    dropout=0.3))(wc)
+
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(final_lstm)
 
     model = Model(inputs=[input_char, input_word, character_type_input, sent_input],

@@ -12,7 +12,7 @@ from evaluation.eval_script import get_wnut_evaluation
 from processed.Preprocess import start_build_sequences
 from utilities.setting import B, wnut_b, BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE_TEXT_ATTENTION, wnut_a, \
     SEGREGATED_TEXT_ATTENTION
-from utilities.utilities import getLabels, save_predictions
+from utilities.utilities import getLabels, save_predictions, fbeta_score
 import tensorflow as tf
 from keras import backend as K
 
@@ -31,7 +31,7 @@ class LuciferNER:
         self.patience = patience
         self.lr_r = lr_r
 
-    def run(self, filename=None, dataset_type=None, model_file=None, label_vocab=None):
+    def run(self, filename=None, dataset_type=None, model_file=None, label_vocab=None, label_key=None):
         '''
         Builds an NER model, predicts, saves prediction files, loads evaulation
         F1-scores from eval script (WNUT 2017 evaluation script cited in the paper)
@@ -77,9 +77,15 @@ class LuciferNER:
             predict = model.predict([np.array(xc_t), np.array(X_test)],
                                     verbose=1,
                                     batch_size=self.batch_size)
-            res, agg = self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type)
-            get_wnut_evaluation(filename)
-            return res, agg
+            self.get_prediction(X_test,
+                                           y_t,
+                                           predict,
+                                           filename,
+                                           label_vocab,
+                                           dataset_type,
+                                           label_key)
+            #get_wnut_evaluation(filename)
+
         elif self.architecture == EXTENDED_SENTENCE_MODEL:
             model.fit([np.array(x_c), np.array(X_train), np.array(addCharTrain), np.array(train_sent)], y,
                       epochs=self.epochs,
@@ -91,9 +97,10 @@ class LuciferNER:
             predict = model.predict([np.array(xc_t), np.array(X_test), np.array(addCharTest), np.array(test_sent)],
                                     verbose=1,
                                     batch_size=self.batch_size)
-            res, agg = self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type)
-            get_wnut_evaluation(filename)
-            return res, agg
+            self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type,
+                                           label_key)
+            #get_wnut_evaluation(filename)
+
 
         else:
 
@@ -107,51 +114,43 @@ class LuciferNER:
                 predict = model.predict([np.array(xc_t), np.array(X_test), np.array(addCharTest)],
                                         verbose=1,
                                         batch_size=self.batch_size)
-                res, agg = self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type)
-                get_wnut_evaluation(filename)
-                return res, agg
+                self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type
+                                               ,label_key)
+                #get_wnut_evaluation(filename)
 
 
-    def get_prediction(self, x, y, predict, filename, label_vocab, dataset_type):
-        label_a = ['tv-show', 'person', 'product', 'music-artist', 'movie', 'facility', 'company', 'geo-loc', 'other',
-                   'sportsteam']
-        label_b = ['person', 'location', 'creative-work', 'corporation', 'product', 'group']
-        label_m = ['PER', 'ORG', 'LOC', 'OTHER']
+
+    def get_prediction(self, x, y, predict, filename, label_vocab, label_key, dataset_type):
+
         prediction = np.argmax(predict, axis=-1)
         prediction_final = np.array(prediction).tolist()
         predictions = getLabels(prediction_final, vocabulary=label_vocab)
         true = getLabels(y, vocabulary=label_vocab)
         save_predictions(filename, x, true, predictions)
         get_wnut_evaluation(filename)
-        if dataset_type == wnut_b:
-            evaluator = Evaluator(true=true, pred=predictions, tags=label_b)
-            res, agg= evaluator.evaluate()
-            return res, agg
-        elif dataset_type == wnut_a:
-            evaluator = Evaluator(true=true, pred=predictions, tags=label_a)
-            res, agg= evaluator.evaluate()
-            return res, agg
-        else:
-            evaluator = Evaluator(true=true, pred=predictions, tags=label_m)
-            res, agg = evaluator.evaluate()
-            return res, agg
+        evaluator = Evaluator(true=true, pred=predictions, tags=label_key)
+        res, agg= evaluator.evaluate()
+        print(res)
+        print(agg)
 
 
 if __name__ == '__main__':
-    experiments = [BASE_MODEL, EXTENDED_BASE_MODEL,EXTENDED_SENTENCE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION]
+    label_a = ['tv-show', 'person', 'product', 'music-artist', 'movie', 'facility', 'company', 'geo-loc', 'other',
+               'sportsteam']
+    label_b = ['person', 'location', 'creative-work', 'corporation', 'product', 'group']
+    label_m = ['PER', 'ORG', 'LOC', 'OTHER']
+    experiments = [BASE_MODEL, EXTENDED_BASE_MODEL, EXTENDED_SENTENCE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION]
 
 
-    ner = LuciferNER(architecture=SIMPLE_TEXT_ATTENTION,
-                         batch_size=50,
+    ner = LuciferNER(architecture=EXTENDED_SENTENCE_MODEL,
+                         batch_size=20,
                          n_epochs=100,
-                         patience=10,
+                         patience=3,
                          lr_r=0.001)
-    results, results_agg = ner.run(filename='007.tsv',
+    ner.run(filename='009.tsv',
                                        dataset_type=B,
                                        model_file='textual_model5',
-                                       label_vocab=wnut_b)
+                                       label_vocab=wnut_b,
+            label_key=label_b)
 
-
-    print(results)
-    print(results_agg)
     print('/------------------------End Experiment------------------------------/')
