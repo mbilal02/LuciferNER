@@ -188,3 +188,8 @@ def random_search():
     print("total time:", time() - start)
     for mean, stdev, param in zip(means, stds, params):
         print("%f (%f) with: %r" % (mean, stdev, param))
+
+
+if __name__ == '__main__':
+
+    random_search()
