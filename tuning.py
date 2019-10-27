@@ -10,7 +10,7 @@ import tensorflow as tf
 import numpy as np
 from keras import backend as K, Model
 from keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.grid_search import RandomizedSearchCV
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import GridSearchCV
 
 from processed.Preprocess import start_build_sequences
