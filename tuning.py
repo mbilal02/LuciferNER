@@ -74,7 +74,7 @@ def getCharCNN(sent_maxlen, word_maxlen, char_vocab_size):
 
     return char_input, conv_net
 
-def getResidualBiLSTM(sent_maxlen, units, dropout):
+def getResidualBiLSTM(sent_maxlen, dropout):
     '''
     Residual bilstm for word-level representation
     '''
@@ -94,12 +94,12 @@ def getResidualBiLSTM(sent_maxlen, units, dropout):
     #         as_dict=True)["elmo"]
     input_text = Input(shape=(sent_maxlen,), dtype="string")
     embedding = ElmoEmbeddingLayer()(input_text)
-    word = Bidirectional(LSTM(units=units,
+    word = Bidirectional(LSTM(units=512,
                               return_sequences=True,
                               recurrent_dropout=dropout,
                               dropout=dropout,
                               kernel_regularizer=regularizers.l2(0.001)))(embedding)
-    word_ = Bidirectional(LSTM(units=units,
+    word_ = Bidirectional(LSTM(units=512,
                                return_sequences=True,
                                recurrent_dropout=dropout,
                                dropout=dropout,
@@ -127,7 +127,7 @@ def sentence_embedding_encoder():
 
     return input_text, sentence_encoder
 
-def create_model(units=1, fully_units= 1, dropout=0.0, optimizer = 'rms' ):
+def create_model( fully_units= 1, dropout=0.0, optimizer = 'rms' ):
     case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3, 'other': 4, 'mainly_numeric': 5,
                 'contains_digit': 6, 'PADDING_TOKEN': 7}
     caseEmbeddings = np.identity(len(case2Idx))
@@ -141,7 +141,7 @@ def create_model(units=1, fully_units= 1, dropout=0.0, optimizer = 'rms' ):
     # case_permmute = Permute((2,1)) (case)
     #sent_input, sent_out = sentence_embedding_encoder()
     input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
-    input_word, word_representations = getResidualBiLSTM(sent_maxlen, units, dropout)
+    input_word, word_representations = getResidualBiLSTM(sent_maxlen, dropout)
     #sent_out = RepeatVector(sent_maxlen)(sent_out)
     wc = merge([word_representations, case, char_out],
                    mode='concat',
@@ -169,10 +169,9 @@ def random_search():
     #batches = np.array([8, 16, 20, 32, 50])
     dropout = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     fully_units = [50, 64, 100, 200, 300, 512, 1024]
-    units = [50, 64, 100, 200, 300, 512, 1024]
+    #units = [50, 64, 100, 200, 300, 512, 1024]
     param_grid = dict(optimizer=optimizers,
                       dropout=dropout,
-                      units= units,
                       fully_units= fully_units)
     start = time()
     model = KerasClassifier(build_fn=create_model, verbose=1)
