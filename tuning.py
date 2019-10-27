@@ -139,11 +139,11 @@ def create_model(units=1, fully_units= 1, dropout=0.0, optimizer = 'rms' ):
     char_vocab_size = len(char_vocab) + 1
     #data = dataset_type
     # case_permmute = Permute((2,1)) (case)
-    sent_input, sent_out = sentence_embedding_encoder()
+    #sent_input, sent_out = sentence_embedding_encoder()
     input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
     input_word, word_representations = getResidualBiLSTM(sent_maxlen, units, dropout)
-    sent_out = RepeatVector(sent_maxlen)(sent_out)
-    wc = merge([word_representations, case, char_out, sent_out],
+    #sent_out = RepeatVector(sent_maxlen)(sent_out)
+    wc = merge([word_representations, case, char_out],
                    mode='concat',
                    concat_axis=2)
     final_lstm = Bidirectional(LSTM(fully_units,
@@ -153,7 +153,7 @@ def create_model(units=1, fully_units= 1, dropout=0.0, optimizer = 'rms' ):
 
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(final_lstm)
 
-    model = Model(inputs=[input_char, input_word, character_type_input, sent_input],
+    model = Model(inputs=[input_char, input_word, character_type_input],
                   outputs=out,
                   name='NER_Model')
     model.compile(optimizer=optimizer,
@@ -180,7 +180,7 @@ def random_search():
     random_search = RandomizedSearchCV(estimator=model,
                                        param_distributions=param_grid,
                                        n_iter=16)
-    random_search.fit([np.array(x_c), np.array(X_train), np.array(addCharTrain), np.array(train_sent)], y)
+    random_search.fit([np.array(x_c), np.array(X_train), np.array(addCharTrain)], y)
     print("Best: %f using %s" % (random_search.best_score_, random_search.best_params_))
     means = random_search.cv_results_['mean_test_score']
     stds = random_search.cv_results_['std_test_score']
