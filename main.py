@@ -90,7 +90,7 @@ class LuciferNER:
                           batch_size=self.batch_size,
                           verbose=1,
                           callbacks=[checkpointer, earlystopper],
-                          validation_data=([np.array(xc_t),np.array(X_test),np.array(addCharTest), np.array(test_sent)], y_t),
+                          validation_data=([np.array(xc_d),np.array(X_dev),np.array(addCharDev), np.array(dev_sent)], y_d),
                           shuffle=True)
 
                 predict = model.predict([np.array(xc_t),np.array(X_test),np.array(addCharTest), np.array(test_sent)],
