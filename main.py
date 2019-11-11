@@ -1,22 +1,18 @@
-import gc
 import logging
 
 import numpy as np
-from keras.backend import set_session
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.optimizers import RMSprop
 from numpy.random import seed
-#from tensorflow.python.client import device_lib
 
-from algorithm.network import build_bilstm_cnn_model, network_model, EXTENDED_SENTENCE_MODEL
+from algorithm.network import network_model, EXTENDED_SENTENCE_MODEL
 from evaluation.eval import Evaluator
 from evaluation.eval_script import get_wnut_evaluation
 from processed.Preprocess import start_build_sequences
-from utilities.setting import B, wnut_b, BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE_TEXT_ATTENTION, wnut_a, \
-    SEGREGATED_TEXT_ATTENTION, A, D, conll03
-from utilities.utilities import getLabels, save_predictions, fbeta_score
-import tensorflow as tf
-from keras import backend as K
+from utilities.setting import BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION, D, \
+    conll03
+from utilities.utilities import getLabels, save_predictions
+
 
 
 seed(1200) #7 #1337 #879
