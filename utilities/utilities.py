@@ -72,6 +72,7 @@ def create_lookup(sentences, voc):
 
             for char in word_label[0]:
                 chars.append(char)
+
     word_counts = Counter(words)
     vocb_inv = [x[0] for x in word_counts.most_common()]
     vocb = {x: i + 1 for i, x in enumerate(vocb_inv)}

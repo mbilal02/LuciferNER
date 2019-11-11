@@ -42,6 +42,7 @@ class LuciferNER:
         y_t, addCharTrain, addCharDev, \
         addCharTest, char_lookup, sent_maxlen, word_maxlen = start_build_sequences(
             vocabulary=wnut_b)
+        print(X_train)
         print(sent_maxlen)
         y = y.reshape(y.shape[0], y.shape[1], 1)
         y_t = y_t.reshape(y_t.shape[0], y_t.shape[1], 1)
@@ -74,7 +75,7 @@ class LuciferNER:
                       callbacks=[checkpointer, earlystopper],
                       validation_data=([np.array(xc_d), np.array(X_dev)], y_d),
                       shuffle=True)
-            predict = model.predict([np.array(xc_t), np.array(X_test)],
+            predict = model.predict([np.array(xc_t),np.array(X_test),np.array(addCharTest), np.array(test_sent)],
                                     verbose=1,
                                     batch_size=self.batch_size)
             self.get_prediction(X_test,
