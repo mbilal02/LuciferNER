@@ -10,7 +10,7 @@ from evaluation.eval import Evaluator
 from evaluation.eval_script import get_wnut_evaluation
 from processed.Preprocess import start_build_sequences
 from utilities.setting import BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION, D, \
-    conll03
+    conll03, B, A, wnut_a
 from utilities.utilities import getLabels, save_predictions
 
 
@@ -38,7 +38,7 @@ class LuciferNER:
         train_sent, dev_sent, test_sent, X_train, X_dev, X_test, x_c, xc_d, xc_t, y, y_d, \
         y_t, addCharTrain, addCharDev, \
         addCharTest, char_lookup, sent_maxlen, word_maxlen = start_build_sequences(
-            vocabulary=conll03)
+            vocabulary=wnut_a)
         print(sent_maxlen)
         y = y.reshape(y.shape[0], y.shape[1], 1)
         y_t = y_t.reshape(y_t.shape[0], y_t.shape[1], 1)
@@ -143,14 +143,14 @@ if __name__ == '__main__':
 
 
     ner = LuciferNER(architecture=EXTENDED_SENTENCE_MODEL,
-                         batch_size=500,
+                         batch_size=50,
                          n_epochs=100,
-                         patience=3,
+                         patience=10,
                          lr_r=0.001)
-    ner.run(filename='sent_att.tsv',
-                                       dataset_type=D,
+    ner.run(filename='wnut2016.tsv',
+                                       dataset_type=A,
                                        model_file='textual_model21',
-                                       label_vocab=conll03,
+                                       label_vocab=label_a,
             label_key=label_c)
 
     print('/------------------------End Experiment------------------------------/')

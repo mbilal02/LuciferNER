@@ -16,7 +16,6 @@ def flatten(list):
     '''
     return [i for sublist in list for i in sublist]
 
-
 case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3,
             'other': 4, 'mainly_numeric': 5, 'contains_digit': 6, 'PADDING_TOKEN': 7}
 
@@ -50,16 +49,15 @@ def create_lookup(sentences, voc):
     words = []
     chars = []
     labels = []
-    print(sentences)
 
     for sentence in sentences:
         for word_label in sentence:
-
             words.append(word_label[0])
             labels.append(word_label[1])
 
             for char in word_label[0]:
                 chars.append(char)
+
     word_counts = Counter(words)
     vocb_inv = [x[0] for x in word_counts.most_common()]
     vocb = {x: i + 1 for i, x in enumerate(vocb_inv)}

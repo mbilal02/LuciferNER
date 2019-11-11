@@ -51,7 +51,7 @@ class ElmoEmbeddingLayer(Layer):
     def call(self, x, mask=None):
         result = self.elmo(inputs={
             "tokens": tf.squeeze(tf.cast(x, "string")),
-            "sequence_len": tf.constant(500 * [100])
+            "sequence_len": tf.constant(50 * [41])
         },
             signature="tokens",
             as_dict=True)["elmo"]
@@ -62,7 +62,7 @@ class ElmoEmbeddingLayer(Layer):
 
     def compute_output_shape(self, input_shape):
         print(input_shape)
-        return (input_shape[0], 100, self.dimensions)
+        return (input_shape[0], 41, self.dimensions)
 
 def getCharCNN(sent_maxlen, word_maxlen, char_vocab_size):
     '''
