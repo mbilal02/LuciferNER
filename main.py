@@ -151,6 +151,6 @@ if __name__ == '__main__':
                                        dataset_type=A,
                                        model_file='textual_model21',
                                        label_vocab=label_a,
-            label_key=label_c)
+            label_key=label_a)
 
     print('/------------------------End Experiment------------------------------/')
