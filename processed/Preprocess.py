@@ -2,7 +2,7 @@ from random import seed
 from nltk.corpus.reader.conll import ConllCorpusReader
 from nltk.tokenize.treebank import TreebankWordDetokenizer
 
-from utilities.setting import DEV, TEST, TRAIN, TRAIN_M, DEV_M, TEST_M
+from utilities.setting import DEV, TEST, TRAIN, TRAIN_M, DEV_M, TEST_M, TRAIN_, DEV_, TEST_, TR03, VA03, TE03, conll03
 from utilities.utilities import create_lookup, create_sequences
 
 seed(7)
@@ -26,6 +26,25 @@ def conllReader(corpus):
 
 
     return tagged, sentences
+
+def custom_conll_reader(filename):
+    with open(filename, mode='r', encoding='utf8') as f:
+        sentences = []
+        sentence = []
+        for line in f:
+            if len(line) == 0 or line.startswith('-DOCSTART') or line[0] == "\n":
+                if len(sentence) > 0:
+                    sentences.append(sentence)
+                    sentence = []
+                continue
+            splits = line.split(' ')
+            sentence.append([splits[0], splits[-1]])
+
+    if len(sentence) > 0:
+        sentences.append(sentence)
+        #sentence = []
+    return sentences
+
 
 
 def build_lookups(train_name, dev_name, test_name, voc):
@@ -161,16 +180,36 @@ def start_build_sequences(vocabulary):
     :param vocabulary: Label vocabulary specific for the datasets
     :return: Sequences
     '''
-    sentences, sent_maxlen, word_maxlen, \
-    num_sentence, char_lookup, label_lookup = build_lookups(TRAIN, DEV, TEST, vocabulary)
-    train_sent, train_dt_sent = conllReader(TRAIN)
-    dev_sent, dev_dt_sent = conllReader(DEV)
-    test_sent, test_dt_sent = conllReader(TEST)
+    train_sents = custom_conll_reader('data/train03.txt')
+    dev_sents = custom_conll_reader('data/valid03.txt')
+    test_sen = custom_conll_reader('data/test03.txt')
+    for_lookup = train_sents + dev_sents + test_sen
+    char_lookup, label_lookup = create_lookup(for_lookup, vocabulary)
+    #sentences, sent_maxlen, word_maxlen, \
+    #num_sentence, char_lookup, label_lookup = build_lookups(TRAIN, DEV, TEST, vocabulary)
+    # train_sent, train_dt_sent = conllReader(TRAIN)
+    # dev_sent, dev_dt_sent = conllReader(DEV)
+    # test_sent, test_dt_sent = conllReader(TEST)
+    # train_sent = train_sent + dev_sent
+    # train_dt_sent = train_dt_sent + dev_dt_sent
 
+    def sentence(raw):
+        sentences = []
+        for sent in raw:
+            sentences.append([TreebankWordDetokenizer().detokenize(sent)])
+        return sentences
     # logger.info('Setting up input sequences')
-    x, y, x_c, addCharTrain = create_sequences(train_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen)
-    x_t, y_t, xc_t, addCharTest = create_sequences(test_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen)
-    x_d, y_d, xc_d, addCharDev = create_sequences(dev_sent, char_lookup, label_lookup, word_maxlen, sent_maxlen)
+    word_maxlen = 50
+    sent_maxlen = 100
+    x, y, x_c, addCharTrain = create_sequences(train_sents, char_lookup, label_lookup, word_maxlen, sent_maxlen)
+    x_t, y_t, xc_t, addCharTest = create_sequences(test_sen, char_lookup, label_lookup, word_maxlen, sent_maxlen)
+    x_d, y_d, xc_d, addCharDev = create_sequences(dev_sents, char_lookup, label_lookup, word_maxlen, sent_maxlen)
+    print(len(x))
+    train_dt_sent = sentence(x)
+    dev_dt_sent = sentence(x_d)
+    test_dt_sent = sentence(x_t)
+    print(len(train_dt_sent))
+    print(len(test_dt_sent))
     X_train = sequence_helper(x, sent_maxlen)
     X_test = sequence_helper(x_t, sent_maxlen)
     X_dev = sequence_helper(x_d, sent_maxlen)

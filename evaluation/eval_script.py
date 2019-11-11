@@ -48,7 +48,7 @@ def get_sents(lines):
 
 Token = namedtuple('Token', 'sent_id word_id word bio tag')
 wnut_bio = ('B', 'I', 'O')
-wnut_tags = ('corporation', 'creative-work', 'group', 'location', 'person', 'product')
+wnut_tags =  ('PER', 'ORG', 'LOC', 'MISC')
 
 
 def make_tok(word, bio_tag, sent_id=-1, word_id=-1):

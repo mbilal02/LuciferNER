@@ -51,7 +51,7 @@ class ElmoEmbeddingLayer(Layer):
     def call(self, x, mask=None):
         result = self.elmo(inputs={
             "tokens": tf.squeeze(tf.cast(x, "string")),
-            "sequence_len": tf.constant(20 * [105])
+            "sequence_len": tf.constant(500 * [100])
         },
             signature="tokens",
             as_dict=True)["elmo"]
@@ -61,7 +61,8 @@ class ElmoEmbeddingLayer(Layer):
         # return K.not_equal(inputs, '__PAD__')
 
     def compute_output_shape(self, input_shape):
-        return (input_shape[0], 105, self.dimensions)
+        print(input_shape)
+        return (input_shape[0], 100, self.dimensions)
 
 def getCharCNN(sent_maxlen, word_maxlen, char_vocab_size):
     '''
@@ -110,13 +111,13 @@ def getResidualBiLSTM(sent_maxlen):
     embedding = ElmoEmbeddingLayer()(input_text)
     word = Bidirectional(LSTM(units=512,
                               return_sequences=True,
-                              recurrent_dropout=0.2,
-                              dropout=0.2,
+                              recurrent_dropout=0.5,
+                              dropout=0.5,
                               kernel_regularizer=regularizers.l2(0.001)))(embedding)
     word_ = Bidirectional(LSTM(units=512,
                                return_sequences=True,
-                               recurrent_dropout=0.2,
-                               dropout=0.2,
+                               recurrent_dropout=0.5,
+                               dropout=0.5,
                                kernel_regularizer=regularizers.l2(0.001)))(word)
     word_representations = add([word, word_])  # residual connection
 
@@ -176,7 +177,7 @@ def build_bilstm_cnn_case_model(sent_maxlen, word_maxlen, char_vocab, dataset_ty
     input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
     input_word, word_representations = getResidualBiLSTM(sent_maxlen)
     # sent_out = RepeatVector(sent_maxlen)(sent_out)
-    concat = merge([word_representations, char_out, case],
+    concat = merge([word_representations, char_out],
                    mode='concat',
                    concat_axis=2)
 
@@ -186,7 +187,7 @@ def build_bilstm_cnn_case_model(sent_maxlen, word_maxlen, char_vocab, dataset_ty
                                     dropout=0.3))(concat)
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(final_lstm)
 
-    model = Model(inputs=[input_char, input_word, character_type_input],
+    model = Model(inputs=[ input_word, input_char],
                   outputs=out,
                   name='NER_Model')
     return model
@@ -200,19 +201,22 @@ def build_bilstm_cnn_sentence_model(sent_maxlen, word_maxlen, char_vocab, datase
                      output_dim=caseEmbeddings.shape[1],
                      weights=[caseEmbeddings])(character_type_input)
     char_vocab_size = len(char_vocab) + 1
-    #data = dataset_type
-    # case_permmute = Permute((2,1)) (case)
+    # #data = dataset_type
+    # # case_permmute = Permute((2,1)) (case)
     sent_input, sent_out = sentence_embedding_encoder()
     input_char, char_out = getCharCNN(sent_maxlen, word_maxlen, char_vocab_size)
     input_word, word_representations = getResidualBiLSTM(sent_maxlen)
     sent_out = RepeatVector(sent_maxlen)(sent_out)
-    wc = merge([word_representations, case, char_out, sent_out],
+
+    wc = merge([char_out,word_representations,case, sent_out],
                    mode='concat',
                    concat_axis=2)
-    final_lstm = Bidirectional(LSTM(200,
+
+    final_lstm = (Bidirectional(LSTM(200,
                                     return_sequences=True,
                                     recurrent_dropout=0.3,
-                                    dropout=0.3))(wc)
+                                    dropout=0.3)))(wc)
+    #final_lstm = Dense(100, activation='relu') (final_lstm)
 
     out = TimeDistributed(Dense(dataset_type, activation="softmax"))(final_lstm)
 

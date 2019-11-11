@@ -2,23 +2,29 @@ import gc
 import logging
 
 import numpy as np
+from keras.backend import set_session
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.optimizers import RMSprop
 from numpy.random import seed
+#from tensorflow.python.client import device_lib
 
 from algorithm.network import build_bilstm_cnn_model, network_model, EXTENDED_SENTENCE_MODEL
 from evaluation.eval import Evaluator
 from evaluation.eval_script import get_wnut_evaluation
 from processed.Preprocess import start_build_sequences
 from utilities.setting import B, wnut_b, BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE_TEXT_ATTENTION, wnut_a, \
-    SEGREGATED_TEXT_ATTENTION
+    SEGREGATED_TEXT_ATTENTION, A, D, conll03
 from utilities.utilities import getLabels, save_predictions, fbeta_score
 import tensorflow as tf
 from keras import backend as K
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.4
+session = tf.Session(config=config)
+K.set_session(session)
+tf.test.is_built_with_cuda()
+tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None)
 
-
-
-seed(7)
+seed(1200) #7 #1337 #879
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +47,7 @@ class LuciferNER:
         train_sent, dev_sent, test_sent, X_train, X_dev, X_test, x_c, xc_d, xc_t, y, y_d, \
         y_t, addCharTrain, addCharDev, \
         addCharTest, char_lookup, sent_maxlen, word_maxlen = start_build_sequences(
-            vocabulary=wnut_b)
+            vocabulary=conll03)
         print(sent_maxlen)
         y = y.reshape(y.shape[0], y.shape[1], 1)
         y_t = y_t.reshape(y_t.shape[0], y_t.shape[1], 1)
@@ -87,18 +93,20 @@ class LuciferNER:
             #get_wnut_evaluation(filename)
 
         elif self.architecture == EXTENDED_SENTENCE_MODEL:
-            model.fit([np.array(x_c), np.array(X_train), np.array(addCharTrain), np.array(train_sent)], y,
-                      epochs=self.epochs,
-                      batch_size=self.batch_size,
-                      verbose=1,
-                      callbacks=[checkpointer, earlystopper],
-                      validation_data=([np.array(xc_d), np.array(X_dev), np.array(addCharDev), np.array(dev_sent)], y_d),
-                      shuffle=True)
-            predict = model.predict([np.array(xc_t), np.array(X_test), np.array(addCharTest), np.array(test_sent)],
-                                    verbose=1,
-                                    batch_size=self.batch_size)
-            self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type,
-                                           label_key)
+            #with tf.device('/device:GPU:0'):
+                model.fit([np.array(x_c),np.array(X_train),np.array(addCharTrain), np.array(train_sent)], y,
+                          epochs=self.epochs,
+                          batch_size=self.batch_size,
+                          verbose=1,
+                          callbacks=[checkpointer, earlystopper],
+                          validation_data=([np.array(xc_t),np.array(X_test),np.array(addCharTest), np.array(test_sent)], y_t),
+                          shuffle=True)
+
+                predict = model.predict([np.array(xc_t),np.array(X_test),np.array(addCharTest), np.array(test_sent)],
+                                        verbose=1,
+                                        batch_size=self.batch_size)
+                self.get_prediction(X_test, y_t, predict, filename, label_vocab, dataset_type,
+                                               label_key)
             #get_wnut_evaluation(filename)
 
 
@@ -139,18 +147,19 @@ if __name__ == '__main__':
                'sportsteam']
     label_b = ['person', 'location', 'creative-work', 'corporation', 'product', 'group']
     label_m = ['PER', 'ORG', 'LOC', 'OTHER']
+    label_c = ['PER', 'ORG', 'LOC', 'MISC']
     experiments = [BASE_MODEL, EXTENDED_BASE_MODEL, EXTENDED_SENTENCE_MODEL, SIMPLE_TEXT_ATTENTION, SEGREGATED_TEXT_ATTENTION]
 
 
     ner = LuciferNER(architecture=EXTENDED_SENTENCE_MODEL,
-                         batch_size=20,
+                         batch_size=500,
                          n_epochs=100,
                          patience=3,
                          lr_r=0.001)
-    ner.run(filename='009.tsv',
-                                       dataset_type=B,
-                                       model_file='textual_model5',
-                                       label_vocab=wnut_b,
-            label_key=label_b)
+    ner.run(filename='sent_att.tsv',
+                                       dataset_type=D,
+                                       model_file='textual_model21',
+                                       label_vocab=conll03,
+            label_key=label_c)
 
     print('/------------------------End Experiment------------------------------/')

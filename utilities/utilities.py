@@ -17,20 +17,6 @@ def flatten(list):
     return [i for sublist in list for i in sublist]
 
 
-wnut_b = {'B-corporation': 12,
-          'B-creative-work': 11,
-          'B-group': 10,
-          'B-location': 9,
-          'B-person': 8,
-          'B-product': 7,
-          'I-corporation': 6,
-          'I-creative-work': 5,
-          'I-group': 4,
-          'I-location': 3,
-          'I-person': 2,
-          'I-product': 1,
-          'O': 0}
-
 case2Idx = {'numeric': 0, 'allLower': 1, 'allUpper': 2, 'initialUpper': 3,
             'other': 4, 'mainly_numeric': 5, 'contains_digit': 6, 'PADDING_TOKEN': 7}
 
@@ -64,9 +50,11 @@ def create_lookup(sentences, voc):
     words = []
     chars = []
     labels = []
+    print(sentences)
 
     for sentence in sentences:
         for word_label in sentence:
+
             words.append(word_label[0])
             labels.append(word_label[1])
 

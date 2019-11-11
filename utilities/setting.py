@@ -17,6 +17,7 @@ EXTENDED_SENTENCE_MODEL = 'sentence_model'
 A = 21
 B = 13
 C = 9
+D= 9
 UNK_TOKEN= '<UNK>'
 PAD_TOKEN= '<PAD>'
 
@@ -43,6 +44,11 @@ TEST_ = "test_2016"
 TRAIN_M = "train_i"
 DEV_M = "dev_i"
 TEST_M = "test_i"
+
+# CoNLL 2003
+TR03 = 'train03.txt'
+TE03 = 'test03.txt'
+VA03= 'valid03.txt'
 #feat_file = 'models/feat_file.h5'
 #img_feature_file = h5py.File((feat_file), 'r')
 
@@ -98,3 +104,9 @@ multi_modal= {'O':0,
 	'B-OTHER':7, 'I-OTHER':8,
 	}
 
+conll03 = {'O':0,
+	'B-PER'+"\n":1, 'I-PER'+"\n":2,
+	'B-LOC'+"\n":3, 'I-LOC'+"\n":4,
+	'B-ORG'+"\n":5, 'I-ORG'+"\n":6,
+	'B-MISC'+"\n":7, 'I-MISC'+"\n":8,
+	}
