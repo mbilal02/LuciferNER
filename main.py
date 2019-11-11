@@ -17,12 +17,7 @@ from utilities.setting import B, wnut_b, BASE_MODEL, EXTENDED_BASE_MODEL, SIMPLE
 from utilities.utilities import getLabels, save_predictions, fbeta_score
 import tensorflow as tf
 from keras import backend as K
-config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.4
-session = tf.Session(config=config)
-K.set_session(session)
-tf.test.is_built_with_cuda()
-tf.test.is_gpu_available(cuda_only=False, min_cuda_compute_capability=None)
+
 
 seed(1200) #7 #1337 #879
 
