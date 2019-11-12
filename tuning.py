@@ -187,15 +187,15 @@ def create_model(x_train, y_train,x_val, y_val, params):
                   metrics=['accuracy', ta.utils.metrics.f1score])
 
     model.summary()
-    with tf.device('/device:GPU:0'):
-        history = model.fit(x_train, y_train,
+
+    history = model.fit(x_train, y_train,
                   epochs=100,
                   batch_size=100,
                   verbose=1,
                   callbacks=[reduce_lr],
                   validation_data=(x_val, y_val),
                   shuffle=True)
-        return history, model
+    return history, model
 
 
 
