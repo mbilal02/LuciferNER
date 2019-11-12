@@ -180,8 +180,7 @@ def create_model(x_train, y_train,x_val, y_val, params):
     model = Model(inputs=[char_input, input_word, character_type_input, input_sent],
                   outputs=out,
                   name='NER_Model')
-    reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-                                            patience=5, min_lr=0.001)
+
     model.compile(optimizer=params['optimizers'](lr=lr_normalizer(params['lr'],params['optimizers'])),
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy', ta.utils.metrics.f1score])
@@ -189,10 +188,9 @@ def create_model(x_train, y_train,x_val, y_val, params):
     model.summary()
 
     history = model.fit(x_train, y_train,
-                  epochs=100,
+                  epochs=20,
                   batch_size=100,
                   verbose=1,
-                  callbacks=[reduce_lr],
                   validation_data=(x_val, y_val),
                   shuffle=True)
     return history, model
