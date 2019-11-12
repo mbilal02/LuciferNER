@@ -189,7 +189,7 @@ def create_model(x_train, y_train,x_val, y_val, params):
     model.summary()
     model.fit(x_train, y_train,
               epochs=100,
-              batch_size=20,
+              batch_size=100,
               verbose=1,
               callbacks=[reduce_lr],
               validation_data=(x_val, y_val),
