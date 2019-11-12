@@ -202,10 +202,10 @@ if __name__ == '__main__':
              'first_units': [50, 64, 100, 200, 300, 512, 1024],
              'hidden_sent': [50, 64, 100, 200, 256, 300, 512, 1024],
              'hidden_char': [50, 64, 100, 200, 256, 300, 512, 1024],
-             'dropout':[0,0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7],
+             'dropout':(0, 0.5, 5),
              'optimizers':[Adam, Nadam, RMSprop, Adamax, SGD, Adagrad],
              'filters':[8, 16, 32, 64, 128],
-             'lr':[0.001,0.01,0.1,0.19,0.5],
+             'lr':(0, 0.5, 5),
              'sent_act': [relu, elu],
              'char_act': [relu, elu]}
     start = time()
