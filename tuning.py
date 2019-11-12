@@ -181,7 +181,7 @@ def create_model(x_train, y_train,x_val, y_val, params):
                   outputs=out,
                   name='NER_Model')
     reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-                                            patience=5, min_lr=0.0001)
+                                            patience=5, min_lr=0.001)
     model.compile(optimizer=params['optimizers'](lr=lr_normalizer(params['lr'],params['optimizers'])),
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy', ta.utils.metrics.f1score])
@@ -205,7 +205,7 @@ if __name__ == '__main__':
              'dropout':[0,0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7],
              'optimizers':[Adam, Nadam, RMSprop, Adamax, SGD, Adagrad],
              'filters':[8, 16, 32, 64, 128],
-             'lr':[0.0001,0.001,0.01,0.1,0.19,0.5],
+             'lr':[0.001,0.01,0.1,0.19,0.5],
              'sent_act': [relu, elu],
              'char_act': [relu, elu]}
     start = time()
