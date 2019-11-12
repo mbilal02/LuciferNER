@@ -51,7 +51,7 @@ class ElmoEmbeddingLayer(Layer):
     def call(self, x, mask=None):
         result = self.elmo(inputs={
             "tokens": tf.squeeze(tf.cast(x, "string")),
-            "sequence_len": tf.constant(20 * [105])
+            "sequence_len": tf.constant(100 * [105])
         },
             signature="tokens",
             as_dict=True)["elmo"]

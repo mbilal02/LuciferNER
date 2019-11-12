@@ -144,7 +144,7 @@ if __name__ == '__main__':
 
 
     ner = LuciferNER(architecture=EXTENDED_SENTENCE_MODEL,
-                         batch_size=20,
+                         batch_size=100,
                          n_epochs=100,
                          patience=3,
                          lr_r=0.001)
